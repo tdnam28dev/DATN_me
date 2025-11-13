@@ -1,0 +1,34 @@
+@font-face {
+    font-family: PlusJaS-Regular;
+    src: url("./PlusJakartaSans-Regular.ttf")
+}
+
+@font-face {
+    font-family: PlusJaS-Medium;
+    src: url("./PlusJakartaSans-Medium.ttf")
+}
+
+@font-face {
+    font-family: PlusJaS-Italic;
+    src: url("./PlusJakartaSans-Italic.ttf")
+}
+
+@font-face {
+    font-family: PlusJaS-SemiBold;
+    src: url("./PlusJakartaSans-SemiBold.ttf")
+}
+
+@font-face {
+    font-family: PlusJaS-Bold;
+    src: url("./PlusJakartaSans-Bold.ttf")
+}
+
+/* @font-face {
+    font-family: TiltWarp-Regular;
+    src: url("./TiltWarpEdited-Regular.otf")
+} */
+
+@font-face {
+  font-family: TrixiPro-Regular;
+  src: url("./TrixiPro-Regular.ttf");
+}

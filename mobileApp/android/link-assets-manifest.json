@@ -1,0 +1,41 @@
+{
+  "migIndex": 1,
+  "data": [
+    {
+      "path": "src/assets/fonts/fonts.css",
+      "sha1": "2b9e16f462f9f160e002250c8ee81db667278369"
+    },
+    {
+      "path": "src/assets/fonts/oswald-stencil.otf",
+      "sha1": "c95abddb1b5ad51e9068a66d5c24a00280e4298d"
+    },
+    {
+      "path": "src/assets/fonts/Oswald-Stencil.ttf",
+      "sha1": "89cd632ee0db44e613d3e154db784faaeb312b91"
+    },
+    {
+      "path": "src/assets/fonts/PlusJakartaSans-Bold.ttf",
+      "sha1": "1ca854f4f176fc36053a862e83ddb85c937d99f1"
+    },
+    {
+      "path": "src/assets/fonts/PlusJakartaSans-Italic.ttf",
+      "sha1": "b5810ea3c5f85eac197c2ab14c8ed46319a22135"
+    },
+    {
+      "path": "src/assets/fonts/PlusJakartaSans-Medium.ttf",
+      "sha1": "f57cafa74fe42b666f31f6da98a2a824f1bc58dd"
+    },
+    {
+      "path": "src/assets/fonts/PlusJakartaSans-Regular.ttf",
+      "sha1": "0d9c207021f3d748204dd642d831798df6c52129"
+    },
+    {
+      "path": "src/assets/fonts/PlusJakartaSans-SemiBold.ttf",
+      "sha1": "4de9dd8582c316692e5bd76586a3f8824c92dbd0"
+    },
+    {
+      "path": "src/assets/fonts/TrixiPro-Regular.ttf",
+      "sha1": "4fd63371ec19f87bc52ebf11967fdf092a7d8a64"
+    }
+  ]
+}

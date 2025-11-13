@@ -1,0 +1,24 @@
+Để cấu hình WiFi cho ESP qua app mobile và gán đúng bóng đèn cho ESP, bạn làm như sau:
+
+1. Cấu hình WiFi cho ESP qua app mobile:
+
+ESP phát WiFi AP (ví dụ: "ESP32-Setup").
+App mobile kết nối vào WiFi này, gửi thông tin SSID/password qua API (ví dụ: /set-wifi?ssid=...&password=...).
+ESP nhận thông tin, lưu lại và kết nối vào mạng WiFi thật (router).
+Sau khi kết nối thành công, ESP sẽ lấy được IP trong mạng LAN.
+
+2. Gán đúng bóng đèn cho ESP:
+
+Khi ESP đã kết nối mạng, nó có thể gửi thông tin nhận diện (MAC, IP, tên node) lên server (qua socket hoặc REST API).
+Trên app mobile, khi thêm bóng đèn mới, bạn chọn đúng ESP (node) trong danh sách node đã đăng ký (có thể lấy từ server).
+Khi thêm device, app gửi thông tin: tên bóng, loại, pin, node (ESP) tương ứng lên server.
+Server lưu device với trường node là ESP vừa chọn, trường pin là chân GPIO điều khiển bóng trên ESP.
+
+3. Luồng tổng quát:
+
+Cấu hình WiFi cho ESP → ESP kết nối mạng → ESP đăng ký lên server → App lấy danh sách ESP → Thêm bóng đèn, chọn đúng ESP và chân pin.
+Gợi ý UI:
+
+Bước 1: Cấu hình WiFi cho ESP (form nhập SSID/password, gửi tới ESP).
+Bước 2: Sau khi ESP online, app hiển thị danh sách ESP (node) đang kết nối.
+Bước 3: Thêm bóng đèn, chọn ESP và chân pin.

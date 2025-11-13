@@ -1,0 +1,113 @@
+import { StyleSheet } from 'react-native';
+
+export default StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F7F7FA',
+    },
+    scrollContent: {
+        padding: 16,
+    },
+    card: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        paddingHorizontal: 0,
+        marginBottom: 14,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    roomRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 18,
+        paddingHorizontal: 16,
+    },
+    roomName: {
+        fontSize: 16,
+        color: '#222',
+        fontWeight: '400',
+    },
+    addBtn: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
+        marginBottom: 12,
+        marginTop: 8,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    addBtnText: {
+        color: '#1976d2',
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    createGroupBtn: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 16,
+        alignItems: 'center',
+        marginBottom: 32,
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    createGroupText: {
+        color: '#1976d2',
+        fontSize: 15,
+        fontWeight: '500',
+    },
+    popupContainer: {
+        flex: 1,
+        backgroundColor: 'rgba(0,0,0,0.18)',
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    popupBox: {
+        backgroundColor: '#fff',
+        borderRadius: 16,
+        width: '85%',
+        padding: 20,
+    },
+    popupTitle: {
+        fontSize: 18,
+        fontWeight: '500',
+        textAlign: 'center',
+        marginBottom: 18,
+    },
+    popupInput: {
+        borderWidth: 1,
+        borderColor: '#eee',
+        borderRadius: 8,
+        padding: 12,
+        fontSize: 16,
+        marginBottom: 24,
+    },
+    popupBtnRow: {
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+    },
+    popupBtnCancel: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: '#f5f5f5',
+        marginRight: 8,
+    },
+    popupBtnSave: {
+        flex: 1,
+        padding: 12,
+        borderRadius: 8,
+        backgroundColor: '#fff',
+    },
+    popupBtnText: {
+        textAlign: 'center',
+        fontSize: 16,
+    },
+});
