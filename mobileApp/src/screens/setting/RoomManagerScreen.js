@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import styles from '../../styles/RoomManagerScreenStyle';
+import { createRoom } from '../../api/room';
+import { getAuth } from '../../storage/auth';
 
 export default function RoomManagerScreen({ route, navigation }) {
-    const { rooms: initialRooms = [] } = route.params || {};
+    const { rooms: initialRooms = [], homeid } = route.params || {};
     const [rooms, setRooms] = useState(initialRooms);
     const [addRoomVisible, setAddRoomVisible] = useState(false);
     const [newRoomName, setNewRoomName] = useState('');
@@ -13,11 +15,18 @@ export default function RoomManagerScreen({ route, navigation }) {
     const handleAddRoom = async () => {
         if (!newRoomName.trim()) return;
         setSavingRoom(true);
-        // TODO: Gọi API tạo phòng nếu cần
-        setRooms([...rooms, { name: newRoomName }]);
-        setNewRoomName('');
-        setAddRoomVisible(false);
-        setSavingRoom(false);
+        try {
+            const auth = await getAuth();
+            const newRoom = await createRoom({ name: newRoomName.trim(), home: homeid, owner: auth.userid }, auth.token);
+            setRooms(prev => [...prev, newRoom]);
+            setNewRoomName('');
+            setAddRoomVisible(false);
+        } catch (err) {
+            // Hiển thị thông báo lỗi cho người dùng nếu cần
+            console.error('Lỗi khi tạo phòng:', err);
+        } finally {
+            setSavingRoom(false);
+        }
     };
 
     return (
@@ -25,7 +34,20 @@ export default function RoomManagerScreen({ route, navigation }) {
             <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
                 <View style={styles.card}>
                     {rooms.map((room, idx) => (
-                        <TouchableOpacity key={room._id || idx} style={styles.roomRow}>
+                        <TouchableOpacity
+                            key={room._id || idx}
+                            style={styles.roomRow}
+                            onPress={() => navigation && navigation.navigate && navigation.navigate('RoomSetting', {
+                                room,
+                                homeid,
+                                onRoomUpdated: (updatedRoom) => {
+                                    setRooms(prev => prev.map(r => (r._id === updatedRoom._id ? updatedRoom : r)));
+                                },
+                                onRoomDeleted: (deletedRoomId) => {
+                                    setRooms(prev => prev.filter(r => r._id !== deletedRoomId));
+                                }
+                            })}
+                        >
                             <Text style={styles.roomName}>{room.name}</Text>
                             <Icon name="chevron-forward" size={18} color="#bbb" />
                         </TouchableOpacity>
@@ -68,7 +90,7 @@ export default function RoomManagerScreen({ route, navigation }) {
                                 onPress={handleAddRoom}
                                 disabled={savingRoom || !newRoomName.trim()}
                             >
-                                <Text style={[styles.popupBtnText, { color: '#1976d2', fontWeight: '500' }]}>Hoàn tất</Text>
+                                <Text style={[styles.popupBtnText, { color: '#0000', fontWeight: '500' }]}>Hoàn tất</Text>
                             </TouchableOpacity>
                         </View>
                     </View>

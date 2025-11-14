@@ -4,9 +4,11 @@ export default StyleSheet.create({
     container: {
         flex: 1,
         backgroundColor: '#F7F7FA',
+        // backgroundColor: '#d7d7f5ff',
     },
     scrollContent: {
-        padding: 16,
+        paddingHorizontal: 16,
+        paddingTop: 4,
     },
     card: {
         backgroundColor: '#fff',
@@ -18,36 +20,33 @@ export default StyleSheet.create({
         shadowRadius: 4,
         elevation: 2,
     },
-    roomRow: {
+    row: {
         flexDirection: 'row',
         alignItems: 'center',
         justifyContent: 'space-between',
-        paddingVertical: 18,
+        paddingVertical: 20,
         paddingHorizontal: 16,
     },
-    roomName: {
-        fontSize: 16,
-        color: '#222',
-        fontWeight: '400',
-    },
-    addBtn: {
-        backgroundColor: '#fff',
-        borderRadius: 12,
-        padding: 16,
+    rowRight: {
+        flexDirection: 'row',
         alignItems: 'center',
-        marginBottom: 12,
-        marginTop: 8,
-        shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 4,
-        elevation: 2,
     },
-    addBtnText: {
-        color: '#1976d2',
+    label: {
         fontSize: 15,
+        color: '#222',
         fontWeight: '500',
     },
-    createGroupBtn: {
+    value: {
+        fontSize: 14,
+        color: '#888',
+        fontWeight: '400',
+    },
+    subLabel: {
+        fontSize: 12,
+        color: '#888',
+        marginTop: 2,
+    },
+    deleteBtn: {
         backgroundColor: '#fff',
         borderRadius: 12,
         padding: 16,
@@ -58,9 +57,9 @@ export default StyleSheet.create({
         shadowRadius: 4,
         elevation: 2,
     },
-    createGroupText: {
-        color: '#1976d2',
-        fontSize: 15,
+    deleteText: {
+        color: '#D32F2F',
+        fontSize: 16,
         fontWeight: '500',
     },
     popupContainer: {
@@ -73,40 +72,41 @@ export default StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: 16,
         width: '85%',
+        padding: 20,
     },
     popupTitle: {
-        fontSize: 16,
+        fontSize: 18,
         fontWeight: '500',
         textAlign: 'center',
-        marginVertical: 18,
+        marginBottom: 18,
     },
     popupInput: {
+        borderWidth: 1,
+        borderColor: '#eee',
         borderRadius: 8,
-        paddingHorizontal: 12,
+        padding: 12,
         fontSize: 16,
         marginBottom: 24,
-        marginHorizontal: 16,
-        backgroundColor: '#f9f9f9',
     },
     popupBtnRow: {
         flexDirection: 'row',
         justifyContent: 'space-between',
-        borderTopWidth: 0.5,
-        borderTopColor: '#ccc',
     },
     popupBtnCancel: {
         flex: 1,
         padding: 12,
-        borderRightWidth: 0.5,
-        borderRightColor: '#ccc',
+        borderRadius: 8,
+        backgroundColor: '#f5f5f5',
+        marginRight: 8,
     },
     popupBtnSave: {
         flex: 1,
         padding: 12,
+        borderRadius: 8,
+        backgroundColor: '#fff',
     },
     popupBtnText: {
         textAlign: 'center',
         fontSize: 16,
-        color: '#797979ff',
     },
 });

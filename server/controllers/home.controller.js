@@ -15,7 +15,17 @@ exports.createHome = async (req, res) => {
 // Lấy tất cả home
 exports.getHomes = async (req, res) => {
   try {
-    const homes = await Home.find().populate('owner').populate('rooms');
+    const homes = await Home.find()
+      .populate('owner')
+      .populate('rooms')
+      .populate({
+        path: 'members.user',
+        model: 'User'
+      })
+      .populate({
+        path: 'members.addedBy',
+        model: 'User'
+      });
     res.json(homes);
   } catch (err) {
     res.status(500).json({ error: 'Máy chủ lỗi: ' + err.message });
@@ -25,7 +35,17 @@ exports.getHomes = async (req, res) => {
 // Lấy home theo id
 exports.getHomeById = async (req, res) => {
   try {
-    const home = await Home.findById(req.params.id).populate('owner').populate('rooms');
+    const home = await Home.findById(req.params.id)
+      .populate('owner')
+      .populate('rooms')
+      .populate({
+        path: 'members.user',
+        model: 'User'
+      })
+      .populate({
+        path: 'members.addedBy',
+        model: 'User'
+      });
     if (!home) return res.status(404).json({ error: 'Không tìm thấy home' });
     res.json(home);
   } catch (err) {
@@ -59,9 +79,44 @@ exports.deleteHome = async (req, res) => {
 exports.getHomesByCurrentUser = async (req, res) => {
   try {
     const userId = req.user && req.user._id ? req.user._id : null;
-    if (!userId) return res.status(401).json({ error: 'Chưa xác thực' });
-    const homes = await Home.find({ owner: userId }).populate('owner').populate('rooms');
+    if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
+    const homes = await Home.find({ owner: userId })
+      .populate('owner')
+      .populate('rooms')
+      .populate('nodes')
+      .populate({
+        path: 'members.user',
+        model: 'User'
+      })
+      .populate({
+        path: 'members.addedBy',
+        model: 'User'
+      });
     res.json(homes);
+  } catch (err) {
+    res.status(500).json({ error: 'Máy chủ lỗi: ' + err.message });
+  }
+};
+
+// Lấy home theo id và user hiện tại
+exports.getHomeByCurrentUserAndId = async (req, res) => {
+  try {
+    const userId = req.user && req.user._id ? req.user._id : null;
+    if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
+    const home = await Home.findOne({ _id: req.params.id, owner: userId })
+      .populate('owner')
+      .populate('rooms')
+      .populate('nodes')
+      .populate({
+        path: 'members.user',
+        model: 'User'
+      })
+      .populate({
+        path: 'members.addedBy',
+        model: 'User'
+      });
+    if (!home) return res.status(404).json({ error: 'Không tìm thấy home hoặc không có quyền' });
+    res.json(home);
   } catch (err) {
     res.status(500).json({ error: 'Máy chủ lỗi: ' + err.message });
   }
@@ -71,7 +126,7 @@ exports.getHomesByCurrentUser = async (req, res) => {
 exports.updateHomeByCurrentUser = async (req, res) => {
   try {
     const userId = req.user && req.user._id ? req.user._id : null;
-    if (!userId) return res.status(401).json({ error: 'Chưa xác thực' });
+    if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
     const home = await Home.findOneAndUpdate({ _id: req.params.id, owner: userId }, req.body, { new: true });
     if (!home) return res.status(404).json({ error: 'Không tìm thấy home hoặc không có quyền' });
     res.json(home);
@@ -84,7 +139,7 @@ exports.updateHomeByCurrentUser = async (req, res) => {
 exports.deleteHomeByCurrentUser = async (req, res) => {
   try {
     const userId = req.user && req.user._id ? req.user._id : null;
-    if (!userId) return res.status(401).json({ error: 'Chưa xác thực' });
+    if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
     const home = await Home.findOneAndDelete({ _id: req.params.id, owner: userId });
     if (!home) return res.status(404).json({ error: 'Không tìm thấy home hoặc không có quyền' });
     res.json({ success: true });

@@ -8,6 +8,7 @@ router.post('/', homeController.createHome);
 router.get('/', homeController.getHomes);
 router.get('/me', homeController.getHomesByCurrentUser);
 router.get('/:id', homeController.getHomeById);
+router.get('/me/:id', homeController.getHomeByCurrentUserAndId);
 router.put('/:id', homeController.updateHome);
 router.put('/update/me/:id', homeController.updateHomeByCurrentUser);
 router.delete('/:id', homeController.deleteHome);

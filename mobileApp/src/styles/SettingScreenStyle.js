@@ -132,6 +132,19 @@ const styles = StyleSheet.create({
     menuArrow: {
         marginLeft: 4,
     },
+    logoutBtn: {
+        backgroundColor: '#fff',
+        borderRadius: 18,
+        marginHorizontal: 16,
+        marginTop: 0,
+        marginBottom: 64,
+        paddingVertical: 18,
+        alignItems: 'center',
+        shadowColor: '#000',
+        shadowOpacity: 0.06,
+        shadowRadius: 8,
+        elevation: 2,
+    },
 });
 
 export default styles;

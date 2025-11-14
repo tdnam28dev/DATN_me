@@ -4,8 +4,8 @@ import { View, Text, TouchableOpacity, Image, ScrollView, ActivityIndicator, Pre
 import Icon from 'react-native-vector-icons/Ionicons';
 import styles from '../../styles/SettingScreenStyle';
 import { getCurrentUser, updateUser } from '../../api/user';
-import { getUser } from '../../storage/user';
-import { getAuth } from '../../storage/auth';
+import { getUser, removeUser } from '../../storage/user';
+import { getAuth, removeAuth } from '../../storage/auth';
 
 export default function SettingsScreen({ navigation }) {
   const [user, setUser] = useState(null);
@@ -29,7 +29,16 @@ export default function SettingsScreen({ navigation }) {
     fetchData();
   }, []);
 
-
+  const handleLogout = async () => {
+    try {
+      await removeUser();
+      await removeAuth();
+      setUser(null);
+      setAuth(null);
+      navigation.reset({ index: 0, routes: [{ name: 'Auth' }] });
+    } catch (err) {
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -103,18 +112,21 @@ export default function SettingsScreen({ navigation }) {
             <Text style={styles.menuText}>Quản Lý Nhà</Text>
             <Icon name="chevron-forward" size={18} color="#bbb" style={styles.menuArrow} />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => navigation && navigation.navigate && navigation.navigate('NodeManager')}
+          >
+            <View style={[styles.menuIcon, { backgroundColor: '#FFF8E1' }]}>
+              <Icon name="server" size={20} color="#ffb300" />
+            </View>
+            <Text style={styles.menuText}>Quản Lý Node</Text>
+            <Icon name="chevron-forward" size={18} color="#bbb" style={styles.menuArrow} />
+          </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
             <View style={[styles.menuIcon, { backgroundColor: '#E6F9ED' }]}>
               <Icon name="chatbubble-ellipses" size={20} color="#4cd964" />
             </View>
             <Text style={styles.menuText}>Trung tâm tin nhắn</Text>
-            <Icon name="chevron-forward" size={18} color="#bbb" style={styles.menuArrow} />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <View style={[styles.menuIcon, { backgroundColor: '#E6F4FB' }]}>
-              <Icon name="help-circle" size={20} color="#00bfff" />
-            </View>
-            <Text style={styles.menuText}>Câu hỏi thường gặp và phản hồi</Text>
             <Icon name="chevron-forward" size={18} color="#bbb" style={styles.menuArrow} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
@@ -125,10 +137,10 @@ export default function SettingsScreen({ navigation }) {
             <Icon name="chevron-forward" size={18} color="#bbb" style={styles.menuArrow} />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
-            <View style={[styles.menuIcon, { backgroundColor: '#FFF8E1' }]}>
-              <Icon name="play-circle" size={20} color="#ffb300" />
+            <View style={[styles.menuIcon, { backgroundColor: '#E6F4FB' }]}>
+              <Icon name="help-circle" size={20} color="#00bfff" />
             </View>
-            <Text style={styles.menuText}>CarPlay</Text>
+            <Text style={styles.menuText}>Câu hỏi thường gặp và phản hồi</Text>
             <Icon name="chevron-forward" size={18} color="#bbb" style={styles.menuArrow} />
           </TouchableOpacity>
         </View>
@@ -205,7 +217,7 @@ export default function SettingsScreen({ navigation }) {
             </View>
           </TouchableOpacity>
         </View>
-        <TouchableOpacity style={{ backgroundColor: '#fff', borderRadius: 18, marginHorizontal: 16, marginTop: 0, marginBottom: 18, paddingVertical: 18, alignItems: 'center' }}>
+        <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
           <Text style={{ color: '#F44336', fontWeight: '600', fontSize: 16 }}>Đăng xuất</Text>
         </TouchableOpacity>
       </ScrollView>

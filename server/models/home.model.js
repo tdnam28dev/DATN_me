@@ -20,8 +20,13 @@ const homeSchema = new mongoose.Schema({
     ref: 'Room'
   }],
   members: [{
+    user: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    addedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+    addedAt: { type: Date, default: Date.now }
+  }],
+  nodes: [{
     type: mongoose.Schema.Types.ObjectId,
-    ref: 'User'
+    ref: 'Node'
   }],
   createdAt: {
     type: Date,
@@ -33,7 +38,7 @@ const homeSchema = new mongoose.Schema({
   }
 });
 
-homeSchema.pre('save', function(next) {
+homeSchema.pre('save', function (next) {
   this.updatedAt = Date.now();
   next();
 });

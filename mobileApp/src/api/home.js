@@ -29,9 +29,10 @@ export async function getHomesByUser(token) {
   return res.json();
 }
 
+
 // Lấy nhà theo id
 export async function getHomeById(id, token) {
-  const res = await fetch(`${apiUrl}/homes/${id}`, {
+  const res = await fetch(`${apiUrl}/homes/me/${id}`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!res.ok) {

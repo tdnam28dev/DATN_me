@@ -13,6 +13,9 @@ import AddRoomScreen from '../screens/setting/AddRoomScreen';
 import SelectLocationScreen from '../screens/setting/SelectLocationScreen';
 import HomeSettingScreen from '../screens/setting/HomeSettingScreen';
 import RoomManagerScreen from '../screens/setting/RoomManagerScreen';  
+import RoomSettingScreen from '../screens/setting/RoomSettingScreen';
+import NodeManagerScreen from '../screens/setting/NodeManagerScreen';
+import AddNodeScreen from '../screens/setting/AddNodeScreen';
 
 const Stack = createStackNavigator();
 
@@ -161,6 +164,52 @@ export default function AppNavigator() {
                                 <Ionicons name="chevron-back" size={22} color="#525252" />
                             </TouchableOpacity>
                         ),
+                    })}
+                />
+                <Stack.Screen name="RoomSetting" component={RoomSettingScreen}
+                    options={({ navigation }) => ({
+                        headerShown: true,
+                        title: 'Cài đặt phòng',
+                        headerTitleAlign: 'center',
+                        headerStyle: { backgroundColor: '#F7F5FB', },
+                        headerTitleStyle: { fontSize: 17, fontWeight: '600', color: '#000', },
+                        headerShadowVisible: false,
+                        animation: 'slide_from_right',
+                        gestureEnabled: true,
+                        headerLeft: () => (
+                            <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingHorizontal: 12 }}>
+                                <Ionicons name="chevron-back" size={22} color="#525252" />
+                            </TouchableOpacity>
+                        ),
+                    })}
+                />
+                <Stack.Screen name="NodeManager" component={NodeManagerScreen}
+                    options={({ navigation }) => ({
+                        headerShown: true,
+                        title: 'Quản lý Node',
+                        headerTitleAlign: 'center',
+                        headerStyle: { backgroundColor: '#F7F5FB', },
+                        headerTitleStyle: { fontSize: 17, fontWeight: '600', color: '#000', },
+                        headerShadowVisible: false,
+                        animation: 'slide_from_right',
+                        gestureEnabled: true,
+                        headerLeft: () => (
+                            <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingHorizontal: 12 }}>
+                                <Ionicons name="chevron-back" size={22} color="#525252" />
+                            </TouchableOpacity>
+                        ),
+                    })}
+                />
+                <Stack.Screen name="AddNode" component={AddNodeScreen}
+                    options={({ navigation }) => ({
+                        headerShown: true,
+                        title: 'Thêm node',
+                        headerTitleAlign: 'center',
+                        headerStyle: { backgroundColor: '#F7F5FB', },
+                        headerTitleStyle: { fontSize: 17, fontWeight: '600', color: '#000', },
+                        headerShadowVisible: false,
+                        animation: 'slide_from_bottom',
+                        gestureEnabled: true,
                     })}
                 />
             </Stack.Navigator>

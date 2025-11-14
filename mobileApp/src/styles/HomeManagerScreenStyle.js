@@ -3,28 +3,12 @@ import { StyleSheet } from 'react-native';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+
     backgroundColor: '#F7F6FB',
+    // backgroundColor: '#dbdbdbff',
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 56,
-    marginBottom: 8,
-  },
-  backButton: {
-    position: 'absolute',
-    left: 16,
-    top: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    zIndex: 2,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: '600',
-    color: '#222',
-    textAlign: 'center',
+  scrollContent: {
+    paddingTop: 4,
   },
   section: {
     backgroundColor: '#fff',
@@ -33,6 +17,10 @@ const styles = StyleSheet.create({
     marginBottom: 18,
     paddingHorizontal: 0,
     paddingVertical: 0,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
   row: {
     flexDirection: 'row',
@@ -40,8 +28,6 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F2F2F2',
   },
   rowNoBorder: {
     flexDirection: 'row',

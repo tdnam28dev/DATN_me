@@ -70,3 +70,57 @@ export async function deleteRoom(id, token) {
   }
   return res.json();
 }
+
+// Lấy danh sách phòng theo user hiện tại
+export async function getRoomsByUser(token) {
+  const res = await fetch(`${apiUrl}/rooms/me`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text);
+  }
+  return res.json();
+}
+
+// Lấy danh sách phòng theo user và phòng hiện tại
+export async function getRoomsByHome(id, token) {
+  const res = await fetch(`${apiUrl}/rooms/me/${id}`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text);
+  }
+  return res.json();
+}
+
+// Cập nhật phòng (update/me/:id)
+export async function updateRoomByUser(id, data, token) {
+  const res = await fetch(`${apiUrl}/rooms/update/me/${id}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    },
+    body: JSON.stringify(data)
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text);
+  }
+  return res.json();
+}
+
+// Xóa phòng (me/:id)
+export async function deleteRoomByUser(id, token) {
+  const res = await fetch(`${apiUrl}/rooms/delete/me/${id}`, {
+    method: 'DELETE',
+    headers: { 'Authorization': `Bearer ${token}` }
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(text);
+  }
+  return res.json();
+}

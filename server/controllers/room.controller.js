@@ -57,3 +57,53 @@ exports.remove = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// Lấy danh sách Room của user hiện tại
+exports.getRoomsByCurrentUser = async (req, res) => {
+  try {
+    const userId = req.user && req.user._id ? req.user._id : null;
+    if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
+    const rooms = await Room.find({ owner: userId }).populate('owner').populate('devices').populate('home');
+    res.json(rooms);
+  } catch (err) {
+    res.status(500).json({ error: 'Máy chủ lỗi: ' + err.message });
+  }
+};
+
+// Lấy danh sách Room của user và home hiện tại
+exports.getRoomsByCurrentUserAndHome = async (req, res) => {
+  try {
+    const userId = req.user && req.user._id ? req.user._id : null;
+    if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
+    const rooms = await Room.find({ owner: userId, home: req.params.id }).populate('owner').populate('devices').populate('home');
+    res.json(rooms);
+  } catch (err) {
+    res.status(500).json({ error: 'Máy chủ lỗi: ' + err.message });
+  }
+};
+
+// Cập nhật rô của user hiện tại
+exports.updateRoomByCurrentUser = async (req, res) => {
+  try {
+    const userId = req.user && req.user._id ? req.user._id : null;
+    if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
+    const room = await Room.findOneAndUpdate({ _id: req.params.id, owner: userId }, req.body, { new: true });
+    if (!room) return res.status(404).json({ error: 'Không tìm thấy room hoặc không có quyền' });
+    res.json(room);
+  } catch (err) {
+    res.status(400).json({ error: 'Máy chủ lỗi: ' + err.message });
+  }
+};
+  
+// Xóa room của user hiện tại
+exports.deleteRoomByCurrentUser = async (req, res) => {
+  try {
+    const userId = req.user && req.user._id ? req.user._id : null;
+    if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
+    const room = await Room.findOneAndDelete({ _id: req.params.id, owner: userId });
+    if (!room) return res.status(404).json({ error: 'Không tìm thấy room hoặc không có quyền' });
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Máy chủ lỗi: ' + err.message });
+  }
+};

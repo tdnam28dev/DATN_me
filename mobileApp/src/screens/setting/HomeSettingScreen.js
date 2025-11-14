@@ -8,7 +8,7 @@ import { getHomeById, updateHome, deleteHome } from '../../api/home';
 
 export default function HomeSettingScreen({ route, navigation }) {
     const { home } = route.params;
-    const [homeDetail, setHomeDetail] = useState(null);
+    const [homeDetail, setHomeDetail] = useState(home);
     const [loading, setLoading] = useState(true);
     const [editNameVisible, setEditNameVisible] = useState(false);
     const [newName, setNewName] = useState('');
@@ -62,11 +62,6 @@ export default function HomeSettingScreen({ route, navigation }) {
         }
     };
 
-    if (loading) {
-        return (
-            <View style={styles.container}><Text>Đang tải...</Text></View>
-        );
-    }
     if (!homeDetail) {
         return (
             <View style={styles.container}><Text>Không tìm thấy thông tin nhà.</Text></View>
@@ -83,21 +78,28 @@ export default function HomeSettingScreen({ route, navigation }) {
                     }}>
                         <Text style={styles.label}>Tên Nhà</Text>
                         <View style={styles.rowRight}>
-                            <Text style={styles.value}>{homeDetail.name}</Text>
+                            <Text style={styles.value}>{loading ? '_' : (homeDetail.name || '_')}</Text>
                             <Icon name="chevron-forward" size={18} color="#bbb" />
                         </View>
                     </TouchableOpacity>
-                    <TouchableOpacity style={styles.row} onPress={() => navigation && navigation.navigate && navigation.navigate('RoomManager', { rooms: homeDetail.rooms })}>
+                    <TouchableOpacity style={styles.row} onPress={() => navigation && navigation.navigate && navigation.navigate('RoomManager', { rooms: homeDetail.rooms, homeid: homeDetail._id })}>
                         <Text style={styles.label}>Quản lý phòng</Text>
                         <View style={styles.rowRight}>
-                            <Text style={styles.value}>{homeDetail.rooms ? homeDetail.rooms.length + ' Phòng' : '0 Phòng'}</Text>
+                            <Text style={styles.value}>{loading ? '_' : (homeDetail.rooms ? homeDetail.rooms.length + ' Phòng' : '0 Phòng')}</Text>
+                            <Icon name="chevron-forward" size={18} color="#bbb" />
+                        </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.row} onPress={() => navigation && navigation.navigate && navigation.navigate('NodeManager', { nodes: homeDetail.nodes, homeid: homeDetail._id })}>
+                        <Text style={styles.label}>Quản lý node</Text>
+                        <View style={styles.rowRight}>
+                            <Text style={styles.value}>{loading ? '_' : (homeDetail.nodes ? homeDetail.nodes.length + ' Node' : '0 Node')}</Text>
                             <Icon name="chevron-forward" size={18} color="#bbb" />
                         </View>
                     </TouchableOpacity>
                     <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('SelectLocation', { homeId: homeDetail._id })}>
                         <Text style={styles.label}>Vị trí</Text>
                         <View style={styles.rowRight}>
-                            <Text style={styles.value}>{homeDetail.address || 'Chưa đặt'}</Text>
+                            <Text style={styles.value}>{loading ? '_' : (homeDetail.address || 'Chưa đặt')}</Text>
                             <Icon name="chevron-forward" size={18} color="#bbb" />
                         </View>
                     </TouchableOpacity>
@@ -108,15 +110,25 @@ export default function HomeSettingScreen({ route, navigation }) {
                 </View>
                 <Text style={styles.sectionTitle}>Thành viên trong nhà</Text>
                 <View style={styles.memberCard}>
-                    {/* Danh sách thành viên, mỗi thành viên là một TouchableOpacity */}
-                    {homeDetail.members && homeDetail.members.length > 0 ? (
+                    <TouchableOpacity style={styles.memberRow} onPress={() => navigation.navigate('MemberDetail', { member: homeDetail.owner })}>
+                        <View style={styles.avatar}><Text style={styles.avatarText}>
+                            {homeDetail.owner.name ? homeDetail.owner.name.charAt(0).toUpperCase() : '?'}
+                        </Text></View>
+                        <View style={styles.memberInfo}>
+                            <Text style={styles.memberName}>{loading ? '_' : (homeDetail.owner.name || '_')}</Text>
+                            <Text style={styles.memberEmail}>{loading ? '_' : (homeDetail.owner.email || '_')}</Text>
+                        </View>
+                        <Text style={styles.role}>Chủ Nhà</Text>
+                        <Icon name="chevron-forward" size={18} color="#bbb" style={{ marginLeft: 8 }} />
+                    </TouchableOpacity>
+                    {!loading && homeDetail.members && homeDetail.members.length > 0 && (
                         homeDetail.members.map((member, idx) => (
                             <TouchableOpacity
                                 key={member._id || idx}
                                 style={styles.memberRow}
                                 onPress={() => navigation.navigate('MemberDetail', { member })}
                             >
-                                <View style={styles.avatar}><Text style={styles.avatarText}>{member.name ? member.name[0].toUpperCase() : 'N'}</Text></View>
+                                <View style={styles.avatar}><Text style={styles.avatarText}>{member.name ? member.name[0].toUpperCase() : '?'}</Text></View>
                                 <View style={styles.memberInfo}>
                                     <Text style={styles.memberName}>{member.name || 'Chưa đặt tên'}</Text>
                                     <Text style={styles.memberEmail}>{member.email || ''}</Text>
@@ -125,18 +137,6 @@ export default function HomeSettingScreen({ route, navigation }) {
                                 <Icon name="chevron-forward" size={18} color="#bbb" style={{ marginLeft: 8 }} />
                             </TouchableOpacity>
                         ))
-                    ) : (
-                        homeDetail.owner && (
-                            <TouchableOpacity style={styles.memberRow} onPress={() => navigation.navigate('MemberDetail', { member: homeDetail.owner })}>
-                                <View style={styles.avatar}><Text style={styles.avatarText}>N</Text></View>
-                                <View style={styles.memberInfo}>
-                                    <Text style={styles.memberName}>{homeDetail.owner.name || 'Nam Trần'}</Text>
-                                    <Text style={styles.memberEmail}>{homeDetail.owner.email || 'tdnam28.dev@gmail.com'}</Text>
-                                </View>
-                                <Text style={styles.role}>Chủ Nhà</Text>
-                                <Icon name="chevron-forward" size={18} color="#bbb" style={{ marginLeft: 8 }} />
-                            </TouchableOpacity>
-                        )
                     )}
                     <TouchableOpacity style={styles.addMemberBtn}>
                         <Text style={styles.addMemberText}>Thêm thành viên</Text>
