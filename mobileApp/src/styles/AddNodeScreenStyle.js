@@ -27,7 +27,7 @@ export default StyleSheet.create({
         marginHorizontal: 20,
     },
     headerBtnDisabled: {
-        opacity: 0.5,
+        opacity: 0.7,
     },
     cancelText: {
         color: '#3d3d3dff',
@@ -45,7 +45,7 @@ export default StyleSheet.create({
     card: {
         backgroundColor: '#fff',
         borderRadius: 16,
-        padding: 16,
+        paddingHorizontal: 16,
         marginHorizontal: 16,
         marginTop: 8,
         marginBottom: 16,
@@ -70,8 +70,6 @@ export default StyleSheet.create({
         marginLeft: 16,
         fontSize: 16,
         color: '#222',
-        borderBottomWidth: 0.5,
-        borderBottomColor: '#e7e7e7ff',
         paddingVertical: 16,
     },
     sectionTitle: {

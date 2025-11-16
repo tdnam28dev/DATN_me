@@ -63,26 +63,32 @@ exports.getRoomsByCurrentUser = async (req, res) => {
   try {
     const userId = req.user && req.user._id ? req.user._id : null;
     if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
-    const rooms = await Room.find({ owner: userId }).populate('owner').populate('devices').populate('home');
+    const filter = { owner: userId };
+    if (req.query.home) filter.home = req.query.home;
+    const rooms = await Room.find(filter).populate('owner').populate('devices').populate('home');
     res.json(rooms);
   } catch (err) {
     res.status(500).json({ error: 'Máy chủ lỗi: ' + err.message });
   }
 };
 
-// Lấy danh sách Room của user và home hiện tại
-exports.getRoomsByCurrentUserAndHome = async (req, res) => {
+// Lấy Room theo user hiện tại và id phòng
+exports.getRoomByCurrentUserAndId = async (req, res) => {
   try {
     const userId = req.user && req.user._id ? req.user._id : null;
     if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
-    const rooms = await Room.find({ owner: userId, home: req.params.id }).populate('owner').populate('devices').populate('home');
-    res.json(rooms);
+    const room = await Room.findOne({ owner: userId, _id: req.params.id })
+      .populate('owner')
+      .populate('devices')
+      .populate('home');
+    if (!room) return res.status(404).json({ error: 'Không tìm thấy phòng hoặc không có quyền' });
+    res.json(room);
   } catch (err) {
     res.status(500).json({ error: 'Máy chủ lỗi: ' + err.message });
   }
 };
 
-// Cập nhật rô của user hiện tại
+// Cập nhật room của user hiện tại
 exports.updateRoomByCurrentUser = async (req, res) => {
   try {
     const userId = req.user && req.user._id ? req.user._id : null;

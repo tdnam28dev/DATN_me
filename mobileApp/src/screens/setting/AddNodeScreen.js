@@ -7,14 +7,13 @@ import { createNode } from '../../api/node';
 
 const defaultNodeTypes = [
     { label: 'Ánh sáng', value: 'light' },
-    { label: 'Cửa', value: 'door' },
     { label: 'Quạt', value: 'fan' },
     { label: 'Cảm biến', value: 'sensor' },
     { label: 'Khác', value: 'other' },
 ];
 
 export default function AddNodeScreen({ navigation, route }) {
-    const {  homeid, onNodeAdded } = route.params || {};
+    const {  homeid } = route.params || {};
     const [name, setName] = useState('');
     const [selectedType, setSelectedType] = useState('');
     const [loading, setLoading] = useState(false);
@@ -40,7 +39,6 @@ export default function AddNodeScreen({ navigation, route }) {
             }
             const res = await createNode({ name, owner: auth.userid, home: homeid, type: selectedType }, auth.token);
             if (res && res._id) {
-                if (onNodeAdded) onNodeAdded();
                 navigation.goBack();
             } else {
             }

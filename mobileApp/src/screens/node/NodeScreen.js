@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, FlatList, RefreshControl, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
 import styles from '../../styles/NodeScreenStyle';
 import { getAuth } from '../../storage/auth';
-import { getNodes, createNode, deleteNode } from '../../api/node';
+import { getNodesByUser, createNode, deleteNode } from '../../api/node';
 import { getRooms } from '../../api/room';
 
 export default function NodeScreen() {
@@ -28,7 +28,7 @@ export default function NodeScreen() {
       return;
     }
     try {
-      const res = await getNodes(auth.token);
+      const res = await getNodesByUser(auth.token);
       if (Array.isArray(res)) setNodes(res);
       else setNodes([]);
     } catch (e) {

@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, FlatList, ActivityIndicator, TouchableOpacity, Modal, TextInput, RefreshControl } from 'react-native';
 import DeviceCard from '../../components/DeviceCard';
-import { getDevices, createDevice, updateDevice } from '../../api/device';
+import { getDevicesByUser, createDevice, updateDevice } from '../../api/device';
 import { getAuth } from '../../storage/auth';
-import { getNodes } from '../../api/node';
-import { getRooms } from '../../api/room';
+import { getNodesByUser } from '../../api/node';
+import { getRoomsByUser } from '../../api/room';
 
 export default function DeviceScreen({ route, navigation }) {
     const { roomId, roomName } = route?.params || {};
@@ -30,13 +30,13 @@ export default function DeviceScreen({ route, navigation }) {
             const t = auth?.token || '';
             setToken(t);
             // Lấy danh sách thiết bị theo roomId nếu có
-            const deviceRes = await getDevices(t, roomId);
+            const deviceRes = await getDevicesByUser(t);
             setDevices(Array.isArray(deviceRes) ? deviceRes : []);
             // Lấy node
-            const nodeRes = await getNodes(t);
+            const nodeRes = await getNodesByUser(t);
             setNodes(Array.isArray(nodeRes) ? nodeRes : []);
             // Lấy room
-            const roomRes = await getRooms(t);
+            const roomRes = await getRoomsByUser(t);
             setRooms(Array.isArray(roomRes) ? roomRes : []);
             setError('');
         } catch (e) {

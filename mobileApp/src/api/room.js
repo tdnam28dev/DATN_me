@@ -71,9 +71,13 @@ export async function deleteRoom(id, token) {
   return res.json();
 }
 
-// Lấy danh sách phòng theo user hiện tại
-export async function getRoomsByUser(token) {
-  const res = await fetch(`${apiUrl}/rooms/me`, {
+// Lấy danh sách phòng theo user hiện tại, hỗ trợ truyền query động
+export async function getRoomsByUser(token, params = {}) {
+  // Tạo query string từ object params
+  const queryString = Object.keys(params).length
+    ? '?' + new URLSearchParams(params).toString()
+    : '';
+  const res = await fetch(`${apiUrl}/rooms/me${queryString}`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!res.ok) {
@@ -84,7 +88,7 @@ export async function getRoomsByUser(token) {
 }
 
 // Lấy danh sách phòng theo user và phòng hiện tại
-export async function getRoomsByHome(id, token) {
+export async function getRoomByUserAndId(id, token) {
   const res = await fetch(`${apiUrl}/rooms/me/${id}`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });

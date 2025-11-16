@@ -1,0 +1,130 @@
+import { StyleSheet } from 'react-native';
+
+const AddDeviceScreenStyle = StyleSheet.create({
+    container: {
+        flex: 1,
+        backgroundColor: '#F8F7FC',
+    },
+    headerBtn: {
+        marginHorizontal: 20,
+    },
+    cancelText: {
+        color: '#3d3d3dff',
+        fontSize: 17,
+        fontWeight: '500',
+    },
+    headerBtnDisabled: {
+        opacity: 0.7,
+    },
+    saveText: {
+        color: '#267AFF',
+        fontSize: 17,
+        fontWeight: '500',
+    },
+    saveDisabled: {
+        color: '#C7C7CC',
+    },
+    card: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        marginHorizontal: 16,
+        paddingHorizontal: 16,
+        marginTop: 8,
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    inputRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        // backgroundColor: '#ddb7b7ff',
+    },
+    label: {
+        fontSize: 16,
+        color: '#222',
+        fontWeight: '400',
+    },
+    inputWrap: {
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 0,
+        minHeight: 40,
+        position: 'relative',
+    },
+    clearIcon: {
+        justifyContent: 'center',
+        alignItems: 'center',
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
+        height: '100%',
+        zIndex: 10,
+    },
+    input: {
+        flex: 1,
+        marginLeft: 16,
+        fontSize: 16,
+        color: '#222',
+        borderBottomWidth: 0.5,
+        borderBottomColor: '#e7e7e7ff',
+        paddingVertical: 16,
+    },
+    typeBox: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        backgroundColor: '#fff',
+        marginHorizontal: 16,
+        borderRadius: 12,
+        marginTop: 16,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    typeLabel: {
+        fontSize: 16,
+        color: '#222',
+        fontWeight: '400',
+    },
+    typeText: {
+        fontSize: 15,
+        color: '#858585',
+    },
+    sectionTitle: {
+        marginLeft: 26,
+        marginTop: 12,
+        fontSize: 14,
+        color: '#888',
+        fontWeight: '400',
+    },
+    nodeBox: {
+        backgroundColor: '#fff',
+        marginHorizontal: 16,
+        borderRadius: 12,
+        marginTop: 4,
+        padding: 16,
+        shadowColor: '#000',
+        shadowOpacity: 0.04,
+        shadowRadius: 4,
+        elevation: 2,
+    },
+    roomRow: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        paddingVertical: 12,
+    },
+    roomName: {
+        fontSize: 15,
+        color: '#222',
+        fontWeight: '400',
+    },
+});
+
+export default AddDeviceScreenStyle;

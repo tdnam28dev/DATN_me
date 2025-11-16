@@ -7,7 +7,7 @@ router.use(auth);
 router.get('/', roomController.getAll);
 router.post('/', roomController.create);
 router.get('/me', roomController.getRoomsByCurrentUser);
-router.get('/me/:id', roomController.getRoomsByCurrentUserAndHome);
+router.get('/me/:id', roomController.getRoomByCurrentUserAndId);
 router.get('/:id', roomController.getById);
 router.put('/update/me/:id', roomController.updateRoomByCurrentUser);
 router.put('/:id', roomController.update);

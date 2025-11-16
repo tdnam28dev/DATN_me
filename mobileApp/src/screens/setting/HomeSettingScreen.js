@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { Modal, TextInput } from 'react-native';
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -14,8 +15,9 @@ export default function HomeSettingScreen({ route, navigation }) {
     const [newName, setNewName] = useState('');
     const [savingName, setSavingName] = useState(false);
 
-    useEffect(() => {
-        const fetchDetail = async () => {
+    useFocusEffect(
+        useCallback(() => {
+            const fetchDetail = async () => {
             try {
                 const auth = await getAuth();
                 const data = await getHomeById(home._id, auth.token);
@@ -28,7 +30,8 @@ export default function HomeSettingScreen({ route, navigation }) {
             }
         };
         fetchDetail();
-    }, [home]);
+        }, [])
+    );
 
     const handleDelete = async () => {
         Alert.alert('Xác nhận', 'Bạn có chắc muốn xóa nhà này?', [

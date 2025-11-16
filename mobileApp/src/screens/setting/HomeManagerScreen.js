@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, TouchableOpacity, ScrollView, ActivityIndicator } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -11,7 +11,7 @@ export default function HomeManagerScreen({ navigation }) {
     const [loading, setLoading] = useState(true);
 
     useFocusEffect(
-        React.useCallback(() => {
+        useCallback(() => {
             let isActive = true;
             const fetchHomes = async () => {
                 setLoading(true);

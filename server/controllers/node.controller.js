@@ -71,12 +71,16 @@ exports.remove = async (req, res) => {
   }
 };
 
-// Lấy danh sách nodes của user hiện tại
+// Lấy danh sách nodes của user hiện tại, cho phép lọc theo query động
 exports.getNodesByCurrentUser = async (req, res) => {
   try {
     const userId = req.user && req.user._id ? req.user._id : null;
     if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
-    const nodes = await Node.find({ owner: userId })
+    const filter = { owner: userId };
+    Object.keys(req.query).forEach(key => {
+      filter[key] = req.query[key];
+    });
+    const nodes = await Node.find(filter)
       .populate('owner')
       .populate('home')
       .populate('devices');

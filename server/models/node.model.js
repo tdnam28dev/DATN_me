@@ -10,7 +10,9 @@ const nodeSchema = new mongoose.Schema({
     type: { type: String, default: 'light' }, // Loại node: 'light', 'camera', 'door', ...
     lastActive: { type: Date, default: Date.now },
     pinsUsed: [{ type: Number }], // Các pin đang dùng
-    pinsAvailable: [{ type: Number }] // Các pin chưa dùng
+    pinsAvailable: [{ type: Number }], // Các pin chưa dùng
+    isConfig: { type: Boolean, default: false }, // Đã cấu hình chưa
+    status: { type: Boolean, default: false } // Trạng thái: 'online' hoặc 'offline'
 }, {
     timestamps: true
 });

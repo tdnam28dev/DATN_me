@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import styles from '../../styles/RoomManagerScreenStyle';
-import { createRoom } from '../../api/room';
+import { getRoomsByUser, createRoom } from '../../api/room';
 import { getAuth } from '../../storage/auth';
 
 export default function RoomManagerScreen({ route, navigation }) {
@@ -11,6 +12,26 @@ export default function RoomManagerScreen({ route, navigation }) {
     const [addRoomVisible, setAddRoomVisible] = useState(false);
     const [newRoomName, setNewRoomName] = useState('');
     const [savingRoom, setSavingRoom] = useState(false);
+
+    const refreshRooms = async () => {
+        const auth = await getAuth();
+        if (!auth || !auth.token) return;
+        try {
+            const res = await getRoomsByUser(auth.token, { home: homeid });
+            console.log('Fetched rooms:', res);
+            if (Array.isArray(res) && homeid) {
+                setRooms(res.filter(n => n.home == homeid || (n.home && n.home._id == homeid)));
+            } else {
+                setRooms(res);
+            }
+        } catch (e) { }
+    };
+
+    useFocusEffect(
+        useCallback(() => {
+            refreshRooms();
+        }, [homeid])
+    );
 
     const handleAddRoom = async () => {
         if (!newRoomName.trim()) return;
@@ -37,16 +58,7 @@ export default function RoomManagerScreen({ route, navigation }) {
                         <TouchableOpacity
                             key={room._id || idx}
                             style={styles.roomRow}
-                            onPress={() => navigation && navigation.navigate && navigation.navigate('RoomSetting', {
-                                room,
-                                homeid,
-                                onRoomUpdated: (updatedRoom) => {
-                                    setRooms(prev => prev.map(r => (r._id === updatedRoom._id ? updatedRoom : r)));
-                                },
-                                onRoomDeleted: (deletedRoomId) => {
-                                    setRooms(prev => prev.filter(r => r._id !== deletedRoomId));
-                                }
-                            })}
+                            onPress={() => navigation && navigation.navigate && navigation.navigate('RoomSetting', {room,homeid})}
                         >
                             <Text style={styles.roomName}>{room.name}</Text>
                             <Icon name="chevron-forward" size={18} color="#bbb" />

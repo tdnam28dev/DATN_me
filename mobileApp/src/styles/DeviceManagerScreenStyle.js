@@ -1,0 +1,142 @@
+
+
+import { StyleSheet } from 'react-native';
+
+const DeviceManagerScreenStyle = StyleSheet.create({
+    menuPopup: {
+        position: 'absolute',
+        top: 58,
+        right: 12,
+        width: 220,
+        backgroundColor: '#fff',
+        borderRadius: 10,
+        elevation: 8,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 6,
+        paddingVertical: 8,
+        zIndex: 100,
+    },
+    arrowContainer: {
+        position: 'absolute',
+        top: -10,
+        right: 18,
+        width: 20,
+        height: 10,
+        overflow: 'hidden',
+        zIndex: 200,
+        // backgroundColor: '#3a3333ff',
+    },
+    arrowShadow: {
+        width: 14,
+        height: 14,
+        backgroundColor: '#fff',
+        transform: [{ rotate: '45deg' }],
+        position: 'absolute',
+        top: 4,
+        left: 3,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.15,
+        shadowRadius: 3,
+        elevation: 5,
+    },
+    menuItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 14,
+        paddingHorizontal: 16,
+        backgroundColor: 'transparent',
+    },
+    menuItemBorder: {
+        borderBottomWidth: 1,
+        borderBottomColor: '#F0F0F0',
+    },
+    menuItemIcon: {
+        marginRight: 14,
+    },
+    menuItemText: {
+        fontSize: 16,
+        color: '#222',
+        fontWeight: '500',
+    },
+    container: {
+        flex: 1,
+        backgroundColor: '#F8F7FC',
+        paddingHorizontal: 0,
+        paddingTop: 0,
+    },
+    addBtn: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginRight: 22,
+    },
+    addBtnText: {
+        color: '#007AFF',
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    sectionDivider: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        marginHorizontal: 28,
+        marginBottom: 6,
+        // backgroundColor: '#ebadadff',
+    },
+    sectionTitle: {
+        fontSize: 13,
+        color: '#888',
+        fontWeight: '400',
+    },
+    listContainer: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        marginHorizontal: 16,
+        marginBottom: 12,
+        elevation: 1,
+    },
+    deviceItem: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        paddingVertical: 16,
+        paddingHorizontal: 16,
+    },
+    deviceName: {
+        fontSize: 17,
+        color: '#222',
+        flex: 1,
+    },
+    addButton: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        marginHorizontal: 12,
+        marginBottom: 10,
+        paddingVertical: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 1,
+    },
+    addButtonText: {
+        color: '#007AFF',
+        fontSize: 16,
+        fontWeight: '500',
+    },
+    groupButton: {
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        marginHorizontal: 12,
+        marginBottom: 10,
+        paddingVertical: 16,
+        alignItems: 'center',
+        justifyContent: 'center',
+        elevation: 1,
+    },
+    groupButtonText: {
+        color: '#007AFF',
+        fontSize: 16,
+        fontWeight: '500',
+    },
+});
+
+export default DeviceManagerScreenStyle;

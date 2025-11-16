@@ -15,8 +15,12 @@ export async function createNode(data, token) {
 }
 
 // Lấy danh sách nodes theo user hiện tại
-export async function getNodesByUser(token) {
-  const res = await fetch(`${apiUrl}/nodes/me`, {
+export async function getNodesByUser(token, query = {}) {
+  // Tạo chuỗi query string từ object query
+  const queryString = Object.keys(query).length
+    ? '?' + new URLSearchParams(query).toString()
+    : '';
+  const res = await fetch(`${apiUrl}/nodes/me${queryString}`, {
     headers: { 'Authorization': `Bearer ${token}` }
   });
   if (!res.ok) {

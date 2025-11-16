@@ -2,15 +2,15 @@ import React, { useState, useCallback } from 'react';
 import { useFocusEffect } from '@react-navigation/native';
 import { View, Text, TouchableOpacity, ScrollView, Modal, TextInput, Switch, Alert } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
-import styles from '../../styles/RoomSettingScreenStyle';
+import styles from '../../styles/DeviceSettingScreenStyle';
 import { getAuth } from '../../storage/auth';
-import { getRoomByUserAndId, updateRoomByUser, deleteRoomByUser } from '../../api/room';
+import { getDeviceById, updateDevice, deleteDevice } from '../../api/device';
 
-export default function RoomSettingScreen({ route, navigation }) {
-    const { room, homeid } = route.params || {};
-    const [roomDetail, setRoomDetail] = useState(room);
+export default function DeviceSettingScreen({ route, navigation }) {
+    const { device, homeid } = route.params || {};
+    const [deviceDetail, setDeviceDetail] = useState(device);
     const [editNameVisible, setEditNameVisible] = useState(false);
-    const [newName, setNewName] = useState(room.name);
+    const [newName, setNewName] = useState(device.name);
     const [savingName, setSavingName] = useState(false);
     const [showVideo, setShowVideo] = useState(true);
 
@@ -20,11 +20,11 @@ export default function RoomSettingScreen({ route, navigation }) {
             const fetchRoom = async () => {
                 try {
                     const auth = await getAuth();
-                    const latestRoom = await getRoomByUserAndId(room._id, auth.token);
-                    console.log('Fetched latest room detail:', latestRoom);
-                    if (isActive && latestRoom) {
-                        setRoomDetail(latestRoom);
-                        setNewName(latestRoom.name);
+                    const latestDevice = await getDeviceById(device._id, auth.token);
+                    console.log('Fetched latest device detail:', latestDevice);
+                    if (isActive && latestDevice) {
+                        setDeviceDetail(latestDevice);
+                        setNewName(latestDevice.name);
                     }
                 } catch (err) {
                     
@@ -32,7 +32,7 @@ export default function RoomSettingScreen({ route, navigation }) {
             };
             fetchRoom();
             return () => { isActive = false; };
-        }, [room._id])
+        }, [device._id])
     );
 
     const handleSaveName = async () => {
@@ -40,27 +40,27 @@ export default function RoomSettingScreen({ route, navigation }) {
         setSavingName(true);
         try {
             const auth = await getAuth();
-            const updated = await updateRoomByUser(roomDetail._id, { name: newName }, auth.token);
-            setRoomDetail(updated);
+            const updated = await updateDevice(deviceDetail._id, { name: newName }, auth.token);
+            setDeviceDetail(updated);
             setEditNameVisible(false);
         } catch (err) {
-            // Có thể hiển thị thông báo lỗi
+            Alert.alert('Lỗi', 'Không thể lưu tên thiết bị.\n' + err.message);
         } finally {
             setSavingName(false);
         }
     };
 
-    const handleDeleteRoom = async () => {
-        Alert.alert('Xác nhận', 'Bạn có chắc muốn xóa phòng này?', [
+    const handleDeleteDevice = async () => {
+        Alert.alert('Xác nhận', 'Bạn có chắc muốn xóa thiết bị này?', [
             { text: 'Hủy', style: 'cancel' },
             {
                 text: 'Xóa', style: 'destructive', onPress: async () => {
                     try {
                         const auth = await getAuth();
-                        await deleteRoomByUser(roomDetail._id, auth.token);
+                        await deleteDevice(deviceDetail._id, auth.token);
                         navigation.goBack();
                     } catch (err) {
-                        Alert.alert('Lỗi', 'Không thể xóa phòng.\n' + err.message);
+                        Alert.alert('Lỗi', 'Không thể xóa thiết bị.\n' + err.message);
                     }
                 }
             }
@@ -74,7 +74,7 @@ export default function RoomSettingScreen({ route, navigation }) {
                     <TouchableOpacity style={styles.row} onPress={() => setEditNameVisible(true)}>
                         <Text style={styles.label}>Name</Text>
                         <View style={styles.rowRight}>
-                            <Text style={styles.value}>{roomDetail.name}</Text>
+                            <Text style={styles.value}>{deviceDetail.name}</Text>
                             <Icon name="chevron-forward" size={18} color="#bbb" />
                         </View>
                     </TouchableOpacity>
@@ -84,13 +84,6 @@ export default function RoomSettingScreen({ route, navigation }) {
                         <Text style={styles.label}>Group</Text>
                         <View style={styles.rowRight}>
                             <Text style={styles.value}>Ungrouped Rooms</Text>
-                            <Icon name="chevron-forward" size={18} color="#bbb" />
-                        </View>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.row} onPress={() => navigation.navigate('DeviceManager', { devices: roomDetail.devices, roomid: roomDetail._id, homeid })}>
-                        <Text style={styles.label}>Device</Text>
-                        <View style={styles.rowRight}>
-                            <Text style={styles.value}>{roomDetail.devices ? roomDetail.devices.length + ' thiết bị' : '0 thiết bị'}</Text>
                             <Icon name="chevron-forward" size={18} color="#bbb" />
                         </View>
                     </TouchableOpacity>
@@ -119,8 +112,8 @@ export default function RoomSettingScreen({ route, navigation }) {
                         </View>
                     </TouchableOpacity>
                 </View>
-                <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteRoom}>
-                    <Text style={styles.deleteText}>Delete Room</Text>
+                <TouchableOpacity style={styles.deleteBtn} onPress={handleDeleteDevice}>
+                    <Text style={styles.deleteText}>Delete Device</Text>
                 </TouchableOpacity>
             </ScrollView>
             {/* Popup sửa tên phòng */}
