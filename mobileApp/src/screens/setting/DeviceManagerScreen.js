@@ -6,6 +6,7 @@ import Icon from 'react-native-vector-icons/Ionicons';
 import styles from '../../styles/DeviceManagerScreenStyle';
 import { getAuth } from '../../storage/auth';
 import { getDevicesByUser } from '../../api/device';
+import { Image } from 'react-native';
 
 export default function DeviceManagerScreen({ route, navigation }) {
     const { devices: initDevices = [], roomid, homeid } = route.params || {};
@@ -98,48 +99,65 @@ export default function DeviceManagerScreen({ route, navigation }) {
 
     return (
         <View style={styles.container}>
-            <ScrollView showsVerticalScrollIndicator={false}>
-                {defaultDeviceTypes.map(typeInfo => {
-                    const filtered = devices.filter(d => (d.type || 'other') === typeInfo.value);
-                    if (filtered.length === 0) return null;
-                    return (
-                        <View key={typeInfo.value}>
-                            <View style={styles.sectionDivider} >
-                                <Icon name={typeInfo.icon} size={15} color="#00b7ff" />
-                                <Text style={styles.sectionTitle}>{typeInfo.label}</Text>
+            {devices.length === 0 ? (
+                <View style={styles.emptyBox}>
+                    <Image source={require('../../assets/img/emptybox.png')} style={styles.emptyImage} resizeMode="contain" />
+                    <Text style={styles.emptyText}>Không có thiết bị</Text>
+                </View>
+            ) : (
+                <ScrollView showsVerticalScrollIndicator={false}>
+                    {defaultDeviceTypes.map(typeInfo => {
+                        const filtered = devices.filter(d => (d.type || 'other') === typeInfo.value);
+                        if (filtered.length === 0) return null;
+                        return (
+                            <View key={typeInfo.value}>
+                                <View style={styles.sectionDivider} >
+                                    <Icon name={typeInfo.icon} size={15} color="#00b7ff" />
+                                    <Text style={styles.sectionTitle}>{typeInfo.label}</Text>
+                                </View>
+                                <View style={styles.listContainer}>
+                                    {filtered.map((device, idx) => {
+                                        // Trạng thái hoạt động
+                                        let statusText = '';
+                                        let statusColor = '#888';
+                                        if (device.status) {
+                                            if (device.type === 'door') {
+                                                statusText = 'Mở';
+                                                statusColor = '#34C759';
+                                            } else {
+                                                statusText = 'On';
+                                                statusColor = '#34C759';
+                                            }
+
+                                        } else {
+                                            if (device.type === 'door') {
+                                                statusText = 'Đóng';
+                                                statusColor = '#FF3B30';
+                                            } else {
+                                                statusText = 'Off';
+                                                statusColor = '#FF3B30';
+                                            }
+                                        }
+                                        return (
+                                            <TouchableOpacity
+                                                key={device._id || idx}
+                                                style={styles.deviceItem}
+                                                onPress={() => navigation && navigation.navigate && navigation.navigate('DeviceSetting', { device, roomid, homeid })}
+                                            >
+                                                {/* <Icon name={typeInfo.icon} size={28} color="#007AFF" style={styles.menuItemIcon} /> */}
+                                                <View style={{ flex: 1 }}>
+                                                    <Text style={styles.deviceName}>{device.name || 'Thiết bị không tên'}</Text>
+                                                    <Text style={{ fontSize: 13, color: statusColor, marginTop: 2 }}>{statusText}</Text>
+                                                </View>
+                                                <Icon name="chevron-forward" size={18} color="#bbb" />
+                                            </TouchableOpacity>
+                                        );
+                                    })}
+                                </View>
                             </View>
-                            <View style={styles.listContainer}>
-                                {filtered.map((device, idx) => {
-                                    // Trạng thái hoạt động
-                                    let statusText = '';
-                                    let statusColor = '#888';
-                                    if (device.status) {
-                                        statusText = 'Hoạt động';
-                                        statusColor = '#34C759';
-                                    } else {
-                                        statusText = 'Tắt';
-                                        statusColor = '#FF3B30';
-                                    }
-                                    return (
-                                        <TouchableOpacity
-                                            key={device._id || idx}
-                                            style={styles.deviceItem}
-                                            onPress={() => navigation && navigation.navigate && navigation.navigate('DeviceSetting', {device, roomid, homeid})}
-                                        >
-                                            {/* <Icon name={typeInfo.icon} size={28} color="#007AFF" style={styles.menuItemIcon} /> */}
-                                            <View style={{ flex: 1 }}>
-                                                <Text style={styles.deviceName}>{device.name || 'Thiết bị không tên'}</Text>
-                                                <Text style={{ fontSize: 13, color: statusColor, marginTop: 2 }}>{statusText}</Text>
-                                            </View>
-                                            <Icon name="chevron-forward" size={18} color="#bbb" />
-                                        </TouchableOpacity>
-                                    );
-                                })}
-                            </View>
-                        </View>
-                    );
-                })}
-            </ScrollView>
+                        );
+                    })}
+                </ScrollView>)}
 
             {/* Popup menu thêm thiết bị */}
             <Modal

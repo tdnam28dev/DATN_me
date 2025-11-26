@@ -1,4 +1,4 @@
-import React, { useState, useLayoutEffect } from 'react';
+import React, { useState, useLayoutEffect, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView } from 'react-native';
 import Icon from 'react-native-vector-icons/Ionicons';
 import styles from '../../styles/AddHomeScreenStyle';
@@ -21,11 +21,15 @@ export default function AddHomeScreen({ navigation }) {
     const [selectedRooms, setSelectedRooms] = useState([...defaultRooms]);
     const [address, setAddress] = useState('');
     const handleRoomToggle = (room) => {
-        setSelectedRooms((prev) =>
-            prev.includes(room)
-                ? prev.filter((r) => r !== room)
-                : [...prev, room]
-        );
+        setSelectedRooms((prev) => {
+            if (prev.includes(room)) {
+                // Bỏ chọn phòng
+                return prev.filter((r) => r !== room);
+            } else {
+                // Chọn thêm phòng
+                return [...prev, room];
+            }
+        });
     };
 
     const handleAddRoom = () => {
@@ -33,7 +37,7 @@ export default function AddHomeScreen({ navigation }) {
             onAddRoom: (newRoom) => {
                 if (newRoom && !rooms.includes(newRoom)) {
                     setRooms((prev) => [...prev, newRoom]);
-                    setSelectedRooms((prev) => [...prev, newRoom]);
+                    // Không tự động thêm vào selectedRooms, chỉ thêm nếu người dùng chọn
                 }
             },
         });
@@ -94,7 +98,7 @@ export default function AddHomeScreen({ navigation }) {
                 </TouchableOpacity>
             ),
         });
-    }, [navigation, homeName]);
+    }, [navigation, homeName, selectedRooms]);
 
     return (
         <View style={styles.container}>

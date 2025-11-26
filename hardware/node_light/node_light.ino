@@ -3,6 +3,9 @@
 #include <WebServer.h>
 #include <HTTPClient.h>
 #include <SocketIoClient.h>
+#include <Arduino.h>
+#include <LittleFS.h>
+#include <ArduinoJson.h>
 
 // -----khởi tạo server, socket, eeprom, led pin-----//
 WebServer server(80);
@@ -31,6 +34,7 @@ String WIFI_PASSWORD = "";
 String USER_EMAIL = "";
 String USER_PASSWORD = "";
 String NODE_ID = "";
+String TOKEN = "";
 bool isConfigured = false;
 
 // -----Lưu trữ thông tin-----//
@@ -67,6 +71,139 @@ void loadConfig() {
   if (eeprom.isKey("node_id"))
     NODE_ID = eeprom.getString("node_id");
   eeprom.end();
+}
+
+// ------------------------ Đọc/ghi danh sách pin ------------------ //
+
+bool checkFile() {
+  return LittleFS.exists("/pins.json");
+}
+
+bool createFile() {
+  File file = LittleFS.open("/pins.json", "w");
+  if (!file) {
+    return false;
+  } else {
+    file.close();
+    return true;
+  }
+}
+
+bool addPinToFile(int pin, int value) {
+  File file = LittleFS.open("/pins.json", "a");
+  if (file) {
+    StaticJsonDocument<128> doc;
+    doc["pin"] = pin;
+    doc["value"] = value;
+    serializeJson(doc, file);
+    file.println();
+    file.close();
+    Serial.println("Đã thêm pin mới vào file!");
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool checkPin(int pin) {
+  File file = LittleFS.open("/pins.json", "r");
+  if (!file) {
+    Serial.println("Không mở được file pins.json để đọc!");
+    return false;
+  } else {
+    while (file.available()) {
+      String line = file.readStringUntil('\n');
+      StaticJsonDocument<128> doc;
+      DeserializationError err = deserializeJson(doc, line);
+      if (!err) {
+        if (doc["pin"].as<int>() == pin) {
+          file.close();
+          return true;
+        }
+      }
+    }
+    file.close();
+    return false;
+  }
+}
+
+bool updatePin(int pin, int newValue) {
+  File file = LittleFS.open("/pins.json", "r");
+  if (!file) {
+    Serial.println("Không mở được file pins.json để đọc!");
+    return false;
+  }
+  String newContent = "";
+  bool updated = false;
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+    StaticJsonDocument<128> doc;
+    DeserializationError err = deserializeJson(doc, line);
+    if (!err) {
+      if (doc["pin"].as<int>() == pin) {
+        doc["value"] = newValue;
+        updated = true;
+        String updatedLine;
+        serializeJson(doc, updatedLine);
+        newContent += updatedLine + "\n";
+      } else {
+        newContent += line + "\n";
+      }
+    }
+  }
+  file.close();
+  if (updated) {
+    file = LittleFS.open("/pins.json", "w");
+    if (!file) {
+      return false;
+    }
+    file.print(newContent);
+    file.close();
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool removePin(int pin) {
+  File file = LittleFS.open("/pins.json", "r");
+  if (!file) return false;
+  String newContent = "";
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+    StaticJsonDocument<128> doc;
+    DeserializationError err = deserializeJson(doc, line);
+    if (!err) {
+      if (doc["pin"].as<int>() != pin) {
+        newContent += line + "\n";
+      }
+    }
+  }
+  file.close();
+  file = LittleFS.open("/pins.json", "w");
+  if (!file) return false;
+  file.print(newContent);
+  file.close();
+  return true;
+}
+
+void getAllPins() {
+  File file = LittleFS.open("/pins.json", "r");
+  if (file) {
+    Serial.println("Danh sách pin:");
+    while (file.available()) {
+      String line = file.readStringUntil('\n');
+      StaticJsonDocument<128> docRead2;
+      DeserializationError err = deserializeJson(docRead2, line);
+      if (!err) {
+        int pin = docRead2["pin"].as<int>();
+        int value = docRead2["value"].as<int>();
+        Serial.printf("Pin: %d, Value: %d\n", pin, value);
+        digitalWrite(pin, value == 1 ? HIGH : LOW);
+      }
+    }
+    file.close();
+  }
 }
 
 // -----Hàm xử lý setup từ client-----//
@@ -123,42 +260,60 @@ void connectSocketIo() {
     String nodeIdJson = "\"" + NODE_ID + "\"";
     socket.emit("joinRoom", nodeIdJson.c_str());
   });
-  socket.on("serverMessage", [](const char *payload, size_t length) {
+  socket.on("sendUpdateToNode", [](const char *payload, size_t length) {
     Serial.print("Nhận serverMessage: ");
     Serial.println(payload);
-    // Giả sử server gửi: {"action":"toggle","led":1,"value":1}
-    String msg = String(payload);
-    if (msg.indexOf("toggle") != -1) {
-      // Lấy giá trị pin từ chuỗi JSON
-      int pinValue = -1;
-      int ledIdx = msg.indexOf("\"led\":");
-      if (ledIdx != -1) {
-        int start = ledIdx + 6;
-        int end = msg.indexOf(',', start);
-        if (end == -1) end = msg.indexOf('}', start);
-        String pinStr = msg.substring(start, end);
-        pinStr.trim();
-        pinValue = pinStr.toInt();
-      }
-      // Tìm vị trí pin trong mảng LED_PINS
-      int ledNum = -1;
-      for (int i = 0; i < NUM_LED; i++) {
-        if (LED_PINS[i] == pinValue) {
-          ledNum = i;
-          Serial.println("Tìm thấy lệnh cho LED ở pin " + String(pinValue) + " (LED số " + String(i + 1) + ")");
-          break;
+    // Parse dữ liệu JSON từ server
+    StaticJsonDocument<256> doc;
+    DeserializationError err = deserializeJson(doc, payload);
+    if (!err) {
+      String action = doc["action"].as<String>();
+      if (action == "toggle") {
+        int pinValue = doc["led"].as<int>();
+        int value = doc["value"].as<int>();
+        // Tìm vị trí pin trong mảng LED_PINS
+        int ledNum = -1;
+        for (int i = 0; i < NUM_LED; i++) {
+          if (LED_PINS[i] == pinValue) {
+            ledNum = i;
+            Serial.println("Tìm thấy lệnh cho LED ở pin " + String(pinValue) + " (LED số " + String(i + 1) + ")");
+            break;
+          }
+        }
+        if (ledNum != -1) {
+          digitalWrite(LED_PINS[ledNum], value == 1 ? HIGH : LOW);
+          updatePin(LED_PINS[ledNum], value);
+          Serial.print("Đã cập nhật LED ở pin ");
+          Serial.print(LED_PINS[ledNum]);
+          Serial.print(" (LED số ");
+          Serial.print(ledNum + 1);
+          Serial.print("): ");
+          Serial.println(value);
         }
       }
-      if (ledNum != -1) {
-        int value = (msg.indexOf("\"value\":1") != -1) ? HIGH : LOW;
-        digitalWrite(LED_PINS[ledNum], value);
-        Serial.print("Đã cập nhật LED ở pin ");
-        Serial.print(LED_PINS[ledNum]);
-        Serial.print(" (LED số ");
-        Serial.print(ledNum + 1);
-        Serial.print("): ");
-        Serial.println(value);
+      if (action == "delete") {
+        int pinValue = doc["led"].as<int>();
+        // Tìm vị trí pin trong mảng LED_PINS
+        int ledNum = -1;
+        for (int i = 0; i < NUM_LED; i++) {
+          if (LED_PINS[i] == pinValue) {
+            ledNum = i;
+            Serial.println("Tìm thấy lệnh xóa cho LED ở pin " + String(pinValue) + " (LED số " + String(i + 1) + ")");
+            break;
+          }
+        }
+        if (ledNum != -1) {
+          digitalWrite(LED_PINS[ledNum], LOW);
+          removePin(LED_PINS[ledNum]);
+          Serial.print("Đã xóa LED ở pin ");
+          Serial.print(LED_PINS[ledNum]);
+          Serial.print(" (LED số ");
+          Serial.print(ledNum + 1);
+          Serial.println(") khỏi file!");
+        }
       }
+    } else {
+      Serial.println("Lỗi parse JSON từ server!");
     }
   });
   socket.on("notification", [](const char *payload, size_t length) {
@@ -171,26 +326,30 @@ void connectSocketIo() {
 }
 
 // -----Hàm đăng nhập và gửi thông tin node lên server-----//
-String login() {
+void login() {
   HTTPClient http;
   String serverUrl = "http://192.168.1.40:8080/api/v1/auth/login";
-  String payload = "{\"username\":\"" + USER_EMAIL + "\",\"password\":\"" + USER_PASSWORD + "\"}";
+  StaticJsonDocument<128> payloadDoc;
+  payloadDoc["username"] = USER_EMAIL;
+  payloadDoc["password"] = USER_PASSWORD;
+  String payload;
+  serializeJson(payloadDoc, payload);
   http.begin(serverUrl);
   http.addHeader("Content-Type", "application/json");
   int httpCode = http.POST(payload);
   String res = http.getString();
-  Serial.println("Login response: " + res);
+  // Serial.println("Login response: " + res);
   String token = "";
-  bool success = false;
-  if (httpCode == 200 && res.indexOf("token") != -1) {
-    int t1 = res.indexOf("\"token\":\"");
-    if (t1 != -1) {
-      int t2 = res.indexOf('"', t1 + 9);
-      token = res.substring(t1 + 9, t2);
+  if (httpCode == 200) {
+    StaticJsonDocument<512> doc;
+    DeserializationError err = deserializeJson(doc, res);
+    if (!err && doc["token"].is<String>()) {
+      token = doc["token"].as<String>();
+      Serial.println("Token: " + token);
     }
   }
   http.end();
-  return token;
+  TOKEN = token;
 }
 
 // -----Hàm gửi thông tin node lên server-----//
@@ -201,7 +360,12 @@ bool sendNodeInfo(String token) {
   String nodeName = "ESP32-" + mac.substring(mac.length() - 5);
   String nodeId = NODE_ID;
   String serverUrl = "http://192.168.1.40:8080/api/v1/nodes/" + nodeId;  // API update node
-  String payload = "{\"name\":\"" + nodeName + "\",\"ip\":\"" + ip + "\",\"mac\":\"" + mac + "\"}";
+  StaticJsonDocument<128> payloadDoc;
+  payloadDoc["name"] = nodeName;
+  payloadDoc["ip"] = ip;
+  payloadDoc["mac"] = mac;
+  String payload;
+  serializeJson(payloadDoc, payload);
   http.begin(serverUrl);
   http.addHeader("Content-Type", "application/json");
   http.addHeader("Authorization", "Bearer " + token);
@@ -222,23 +386,26 @@ void getPinsUsedFromServer(String token) {
   String res = http.getString();
   Serial.println("PinsUsed response: " + res);
   http.end();
-
-  // Parse JSON kết quả và set trạng thái cho các chân pin
-  // Giả sử kết quả dạng: {"19":1,"5":0,"16":1}
-  for (int i = 0; i < NUM_LED; i++) {
-    int pin = LED_PINS[i];
-    String findStr = "\"" + String(pin) + "\":";
-    int idx = res.indexOf(findStr);
-    if (idx != -1) {
-      int valStart = idx + findStr.length();
-      int valEnd = res.indexOf(',', valStart);
-      if (valEnd == -1) valEnd = res.indexOf('}', valStart);
-      String valStr = res.substring(valStart, valEnd);
-      valStr.trim();
-      int value = valStr.toInt();
-      digitalWrite(pin, value == 1 ? HIGH : LOW);
-      Serial.printf("Set pin %d to %d\n", pin, value);
+  StaticJsonDocument<256> doc;
+  DeserializationError err = deserializeJson(doc, res);
+  if (!err) {
+    for (int i = 0; i < NUM_LED; i++) {
+      int pin = LED_PINS[i];
+      if (doc[String(pin)].is<int>()) {
+        int value = doc[String(pin)].as<int>();
+        digitalWrite(pin, value == 1 ? HIGH : LOW);
+        Serial.printf("Set pin %d to %d\n", pin, value);
+        // Sử dụng các hàm quản lý file pin
+        if (checkPin(pin)) {
+          updatePin(pin, value);
+        } else {
+          addPinToFile(pin, value);
+        }
+      }
     }
+    Serial.println("Đã lưu trạng thái các pin vào file pins.json!");
+  } else {
+    Serial.println("Lỗi parse JSON pinsUsed!");
   }
 }
 
@@ -256,9 +423,9 @@ bool config() {
   // Kết nối WiFi và đăng nhập, gửi thông tin node
   bool ok = connectToWiFi();
   if (ok) {
-    String token = login();
-    if (token != "") {
-      bool success = sendNodeInfo(token);
+    login();
+    if (TOKEN != "") {
+      bool success = sendNodeInfo(TOKEN);
       if (success) {
         return true;
       } else {
@@ -311,20 +478,41 @@ void reConfig() {
 void connect() {
   bool ok = connectToWiFi();
   if (ok) {
-    String token = login();
-    if (token != "") {
-      getPinsUsedFromServer(token);
+    login();
+    if (TOKEN != "") {
+      getPinsUsedFromServer(TOKEN);
       connectSocketIo();
+    } else {
+      getAllPins();
     }
+  } else {
+    getAllPins();
   }
 }
 
 void setup() {
   Serial.begin(115200);
+  if (!LittleFS.begin()) {
+    if (!LittleFS.begin(true)) {
+      Serial.println("LittleFS ready!");
+    } else {
+      Serial.println("Lỗi khởi tạo LittleFS!");
+    }
+  } else {
+    Serial.println("LittleFS ready!");
+  }
+  if (!checkFile()) {
+    if (createFile()) {
+      Serial.println("Đã tạo file cards.json!");
+    } else {
+      Serial.println("Lỗi tạo file cards.json!");
+    }
+  }
   for (int i = 0; i < NUM_LED; i++) {
     pinMode(LED_PINS[i], OUTPUT);
     digitalWrite(LED_PINS[i], LOW);
   }
+  getAllPins();
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(BOOT_PIN, INPUT_PULLUP);
   pinMode(BOARD_LED_PIN, OUTPUT);

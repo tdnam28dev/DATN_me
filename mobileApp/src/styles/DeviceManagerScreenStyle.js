@@ -77,6 +77,21 @@ const DeviceManagerScreenStyle = StyleSheet.create({
         fontSize: 16,
         fontWeight: '500',
     },
+    emptyText: {
+        fontSize: 16,
+        fontWeight: '400',
+        color: '#888',
+        marginBottom: 8,
+    },
+    emptyBox: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    emptyImage: {
+        width: 130,
+        height: 130,
+    },
     sectionDivider: {
         flexDirection: 'row',
         alignItems: 'center',
@@ -85,6 +100,7 @@ const DeviceManagerScreenStyle = StyleSheet.create({
         // backgroundColor: '#ebadadff',
     },
     sectionTitle: {
+        marginLeft: 4,
         fontSize: 13,
         color: '#888',
         fontWeight: '400',

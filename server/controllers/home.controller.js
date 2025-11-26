@@ -81,17 +81,20 @@ exports.getHomesByCurrentUser = async (req, res) => {
     const userId = req.user && req.user._id ? req.user._id : null;
     if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
     const homes = await Home.find({ owner: userId })
-      .populate('owner')
-      .populate('rooms')
-      .populate('nodes')
-      .populate({
-        path: 'members.user',
-        model: 'User'
-      })
-      .populate({
-        path: 'members.addedBy',
-        model: 'User'
-      });
+  .populate('owner')
+  .populate({
+    path: 'rooms',
+    populate: { path: 'devices' }
+  })
+  .populate('nodes')
+  .populate({
+    path: 'members.user',
+    model: 'User'
+  })
+  .populate({
+    path: 'members.addedBy',
+    model: 'User'
+  });
     res.json(homes);
   } catch (err) {
     res.status(500).json({ error: 'Máy chủ lỗi: ' + err.message });

@@ -112,7 +112,8 @@ export default function DeviceScreen({ route, navigation }) {
                         status={!!item.status}
                         onPress={async (newStatus) => {
                             try {
-                                await updateDevice(token, item._id || item.id, { status: newStatus });
+                                // Truyền đúng thứ tự: id, dữ liệu, token
+                                await updateDevice(item._id || item.id, { status: newStatus }, token);
                                 setDevices(devices => devices.map(d =>
                                     (d._id || d.id) === (item._id || item.id) ? { ...d, status: newStatus } : d
                                 ));

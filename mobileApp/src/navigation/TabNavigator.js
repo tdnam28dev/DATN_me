@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { BlurView } from '@react-native-community/blur';
-import HomeScreen from '../screens/HomeScreen';
+import HomeScreen from '../screens/home/HomeScreen';
 import DeviceStack from './DeviceStack';
 import DeviceScreen from '../screens/DeviceScreen';
 import NodeScreen from '../screens/node/NodeScreen';
@@ -20,7 +20,7 @@ export default function TabNavigator() {
           let iconName;
           if (route.name === 'Home') iconName = 'home-outline';
           else if (route.name === 'Device') iconName = 'hardware-chip-outline';
-          else if (route.name === 'Node') iconName = 'server-outline';
+          else if (route.name === 'Notify') iconName = 'notifications-outline';
           else if (route.name === 'Settings') iconName = 'settings-outline';
           return <Ionicons name={iconName} size={size} color={color} backgroundColor='rgba(255, 255, 255, 0)' />;
         },
@@ -61,7 +61,7 @@ export default function TabNavigator() {
       <Tab.Screen name="Device" component={DeviceStack}>
         {/* {props => <DeviceScreen {...props} token={token} />} */}
       </Tab.Screen>
-      <Tab.Screen name="Node">
+      <Tab.Screen name="Notify">
         {props => <NodeScreen {...props} />}
       </Tab.Screen>
       <Tab.Screen name="Settings">

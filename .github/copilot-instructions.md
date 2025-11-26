@@ -13,4 +13,8 @@
 - Mọi câu trả lời phải bằng tiếng Việt.
 - Mã nguồn phải được tổ chức theo mô hình MVC (Model-View-Controller).
 - Code phải rõ ràng, dễ hiểu, tuân thủ các best practices trong Node.js.
+- Style code phải nhất quán trong toàn bộ dự án.
 - Ưu tiên sử dụng các công cụ và thư viện phổ biến trong cộng đồng Node.js.
+- Style phải được định nghĩa trong các file riêng biệt.
+- Mỗi chức năng phải được viết trong các module riêng biệt để dễ bảo trì và mở rộng.
+

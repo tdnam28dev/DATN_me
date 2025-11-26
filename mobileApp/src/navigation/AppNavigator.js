@@ -20,6 +20,9 @@ import NodeSettingScreen from '../screens/setting/NodeSettingScreen';
 import DeviceManagerScreen from '../screens/setting/DeviceManagerScreen';
 import AddDeviceScreen from '../screens/setting/AddDeviceScreen';
 import DeviceSettingScreen from '../screens/setting/DeviceSettingScreen';
+import ScheduleDeviceScreen from '../screens/setting/ScheduleDeviceScreen';
+import AddScheduleScreen from '../screens/setting/AddScheduleScreen';
+import ScheduleSettingScreen from '../screens/setting/ScheduleSettingScreen';
 
 const Stack = createStackNavigator();
 
@@ -27,7 +30,7 @@ export default function AppNavigator() {
 
     return (
         <NavigationContainer>
-            <Stack.Navigator initialRouteName="Auth" screenOptions={{ headerShown: false }}>
+            <Stack.Navigator initialRouteName="Auth" screenOptions={{ headerShown: false, detachPreviousScreen: true, lazy: true }}>
                 <Stack.Screen name="Auth" component={AuthScreen} />
                 <Stack.Screen name="MainTabs">
                     {props => <TabNavigator {...props} />}
@@ -266,6 +269,52 @@ export default function AppNavigator() {
                     options={({ navigation }) => ({
                         headerShown: true,
                         title: 'Cài đặt thiết bị',
+                        headerTitleAlign: 'center',
+                        headerStyle: { backgroundColor: '#F7F5FB', },
+                        headerTitleStyle: { fontSize: 17, fontWeight: '600', color: '#000', },
+                        headerShadowVisible: false,
+                        animation: 'slide_from_right',
+                        gestureEnabled: true,
+                        headerLeft: () => (
+                            <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingHorizontal: 12 }}>
+                                <Ionicons name="chevron-back" size={22} color="#525252" />
+                            </TouchableOpacity>
+                        ),
+                    })}
+                />
+                <Stack.Screen name="ScheduleDevice" component={ScheduleDeviceScreen}
+                    options={({ navigation }) => ({
+                        headerShown: true,
+                        title: 'Quản lý lịch trình',
+                        headerTitleAlign: 'center',
+                        headerStyle: { backgroundColor: '#F7F5FB', },
+                        headerTitleStyle: { fontSize: 17, fontWeight: '600', color: '#000', },
+                        headerShadowVisible: false,
+                        animation: 'slide_from_right',
+                        gestureEnabled: true,
+                        headerLeft: () => (
+                            <TouchableOpacity onPress={() => navigation.goBack()} style={{ paddingHorizontal: 12 }}>
+                                <Ionicons name="chevron-back" size={22} color="#525252" />
+                            </TouchableOpacity>
+                        ),
+                    })}
+                />
+                <Stack.Screen name="AddSchedule" component={AddScheduleScreen}
+                    options={({ navigation }) => ({
+                        headerShown: true,
+                        title: 'Thêm lịch trình',
+                        headerTitleAlign: 'center',
+                        headerStyle: { backgroundColor: '#F7F5FB', },
+                        headerTitleStyle: { fontSize: 17, fontWeight: '600', color: '#000', },
+                        headerShadowVisible: false,
+                        animation: 'slide_from_bottom',
+                        gestureEnabled: true,
+                    })}
+                />
+                <Stack.Screen name="ScheduleSetting" component={ScheduleSettingScreen}
+                    options={({ navigation }) => ({
+                        headerShown: true,
+                        title: 'Cài đặt lịch trình',
                         headerTitleAlign: 'center',
                         headerStyle: { backgroundColor: '#F7F5FB', },
                         headerTitleStyle: { fontSize: 17, fontWeight: '600', color: '#000', },

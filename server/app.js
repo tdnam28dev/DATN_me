@@ -24,12 +24,12 @@ mongoose.connect(process.env.MONGODB_URI, {
 
 // Tích hợp socket.io cho các thiết bị
 io.on('connection', (socket) => {
-	socket.on('joinRoom', (roomId) => {
-		socket.join(`room_${roomId}`);
-		console.log(`Client đã vào phòng: room_${roomId}`);
+	socket.on('joinRoom', (room) => {
+		socket.join(`room_${room}`);
+		console.log(`Client đã vào phòng: room_${room}`);
 		socket.emit('notification', {
 			type: 'success',
-			message: `Đã kết nối tới phòng: ${roomId}`,
+			message: `Đã kết nối tới phòng: ${room}`,
 			time: new Date(),
 		});
 	});

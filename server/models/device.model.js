@@ -9,6 +9,7 @@ const deviceSchema = new mongoose.Schema({
     node: { type: mongoose.Schema.Types.ObjectId, ref: 'Node' },
     owner: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
     room: { type: mongoose.Schema.Types.ObjectId, ref: 'Room' },
+    schedules: [{ type: mongoose.Schema.Types.ObjectId, ref: 'Schedule' }],
     lastActive: { type: Date, default: Date.now }
 }, {
     timestamps: true

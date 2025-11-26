@@ -36,7 +36,7 @@ exports.create = async (req, res) => {
           node.devices.push(device._id);
         }
         // Nếu có pin, cập nhật pinsUsed và loại bỏ khỏi pinsAvailable
-        if (device.pin !== undefined && device.pin !== null) {
+        if (device.pin) {
           if (!node.pinsUsed.includes(device.pin)) {
             node.pinsUsed.push(device.pin);
           }
@@ -45,6 +45,14 @@ exports.create = async (req, res) => {
         await node.save();
       }
     }
+    const io = req.app.get('io');
+    // Gửi lệnh tới node qua socket.io
+    io.to(`room_${device.node._id}`).emit('sendUpdateToNode', {
+      action: 'createPin',
+      id: device._id,
+      led: device.pin,
+      value: device.status ? 1 : 0
+    });
     res.status(201).json(device);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -158,8 +166,20 @@ exports.updateDeviceByCurrentUser = async (req, res) => {
   try {
     const userId = req.user && req.user._id ? req.user._id : null;
     if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
-    const device = await Device.findOneAndUpdate({ _id: req.params.id, owner: userId }, req.body, { new: true });
+    const device = await Device.findOneAndUpdate({ _id: req.params.id, owner: userId }, req.body, { new: true })
+      .populate('owner')
+      .populate('room')
+      .populate('node');
     if (!device) return res.status(404).json({ error: 'Không tìm thấy device hoặc không có quyền' });
+    // Lấy io từ app
+    const io = req.app.get('io');
+    // Gửi lệnh tới node qua socket.io
+    io.to(`room_${device.node._id}`).emit('sendUpdateToNode', {
+      action: 'updateStatus',
+      led: device.pin,
+      value: device.status ? 1 : 0
+    });
+    io.to(`room_${device.node._id}`).emit('sendUpdateToApp', device);
     res.json(device);
   } catch (err) {
     res.status(400).json({ error: 'Máy chủ lỗi: ' + err.message });
@@ -173,7 +193,9 @@ exports.deleteDeviceByCurrentUser = async (req, res) => {
     if (!userId) return res.status(401).json({ error: 'Lỗi xác thực' });
     const device = await Device.findOneAndDelete({ _id: req.params.id, owner: userId });
     if (!device) return res.status(404).json({ error: 'Không tìm thấy device hoặc không có quyền' });
-    // Nếu device có trường node, xóa device khỏi danh sách devices của node và cập nhật lại pins
+    if (device.room) {
+      await Room.findByIdAndUpdate(device.room, { $pull: { devices: device._id } });
+    }
     if (device.node) {
       const node = await Node.findById(device.node);
       if (node) {
@@ -190,6 +212,14 @@ exports.deleteDeviceByCurrentUser = async (req, res) => {
         }
         await node.save();
       }
+    }
+    if (device.type === 'light' && device.node) {
+      const io = req.app.get('io');
+      // Gửi lệnh tới node qua socket.io
+      io.to(`room_${device.node._id}`).emit('sendUpdateToNode', {
+        action: 'deletePin',
+        led: device.pin,
+      });
     }
     res.json({ success: true });
   } catch (err) {

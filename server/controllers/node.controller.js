@@ -37,7 +37,7 @@ exports.getById = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     // Thiết lập các chân chưa dùng mặc định
-    const defaultPins = [19, 5, 16, 0, 15];
+    const defaultPins = [19, 5, 16, 4, 15];
     const nodeData = { ...req.body, pinsAvailable: defaultPins };
     const node = new Node(nodeData);
     await node.save();

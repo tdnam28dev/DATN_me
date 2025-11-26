@@ -1,3 +1,5 @@
+#include <SPI.h>
+#include <MFRC522.h>
 #include <Preferences.h>
 #include <WiFi.h>
 #include <WebServer.h>
@@ -5,39 +7,46 @@
 #include <SocketIoClient.h>
 #include <Keypad.h>
 #include <LiquidCrystal_I2C.h>
+#include <Arduino.h>
+#include <LittleFS.h>
+#include <ArduinoJson.h>
+#include <ESP32Servo.h>
 
-// -----khởi tạo server, socket, eeprom, led pin-----//
+#define SS_PIN 5
+#define RST_PIN 0
+#define BUZZER 4  // GPIO4 pin kết nối còi báo
+#define LED_ONL 2
+#define LED_OFF 17
+#define SERVO_PIN 15
+#define BUTTON_PIN 16
+// Biến ROOM_ID cho socket.io
+String ROOM_ID = "1234";
+// ID thẻ
+String CARD_ID = "";
+// Tên thẻ
+String CARD_NAME = "";
+// Thông tin kết nối WIFI
+String WIFI_SSID = "";
+String WIFI_PASSWORD = "";
+// Thông tin user
+String USER_EMAIL = "admin";
+String USER_PASSWORD = "1";
+// Mật khẩu cửa
+String PASS = "";
+// Access token
+String ACCESS_TOKEN = "";
+String ACCESS_TYPE = "";
+// Xác định thẻ khách
+bool IS_GUEST = false;
+
+// -----khởi tạo server, socket, eeprom-----//
 WebServer server(80);
 SocketIoClient socket;
 Preferences eeprom;
-
-#define BUZZER 18             // GPIO18 pin kết nối còi báo
-#define BUTTON_PIN 19         // GPIO19 pin kết nối nút thường
-#define BOOT_PIN 0            // GPIO0 pin kết nối nút BOOT
-#define LONG_PRESS_TIME 5000  // 5000 milliseconds (5 giây)
-#define BOARD_LED_PIN 2       // GPIO2 là đèn có sẵn trên mạch
-int lastState = LOW;          // the previous state from the input pin
-int currentState;             // the current reading from the input pin
-unsigned long pressedTime = 0;
-unsigned long releasedTime = 0;
-bool ledState = LOW;  // trạng thái hiện tại của đèn
-
-// -----WiFi (Access Point)-----//
-const char *AP_SSID = "ESP32-Setup";
-const char *AP_PASS = "12345678";
-
-// -----Biến lưu trữ thông tin WiFi và User-----//
-String WIFI_SSID = "";
-String WIFI_PASSWORD = "";
-String USER_EMAIL = "";
-String USER_PASSWORD = "";
-String NODE_ID = "";
-String DOOR_PASSWORD = "";
-bool isConfigured = false;
-
-// Led lcd
 LiquidCrystal_I2C lcd(0x27, 16, 2);
-
+Servo sv;
+MFRC522 rfid(SS_PIN, RST_PIN);
+byte nuidPICC[4];
 // Keypad
 const byte rows = 4;     //số hàng
 const byte columns = 4;  //số cột
@@ -52,149 +61,262 @@ uint8_t rowPins[rows] = { 13, 12, 14, 27 };
 uint8_t columnPins[columns] = { 26, 25, 33, 32 };
 Keypad keypad = Keypad(makeKeymap(keys), rowPins, columnPins, rows, columns);
 
-// -----Lưu trữ thông tin-----//
-void saveConfig() {
-  eeprom.begin("my-app", false);
-  eeprom.putString("ssid", WIFI_SSID);
-  eeprom.putString("password", WIFI_PASSWORD);
-  eeprom.putString("user_email", USER_EMAIL);
-  eeprom.putString("user_password", USER_PASSWORD);
-  eeprom.putString("node_id", NODE_ID);
-  eeprom.putString("door_password", DOOR_PASSWORD);
-  eeprom.end();
-}
-void clearConfig() {
-  eeprom.begin("my-app", false);
-  eeprom.remove("ssid");
-  eeprom.remove("password");
-  eeprom.remove("user_email");
-  eeprom.remove("user_password");
-  eeprom.remove("node_id");
-    eeprom.remove("door_password");
-  eeprom.end();
-}
+// --------------------------- WIFI ------------------------------------- //
 
-void loadConfig() {
-  eeprom.begin("my-app", true);
-  if (eeprom.isKey("ssid"))
-    WIFI_SSID = eeprom.getString("ssid");
-  if (eeprom.isKey("password"))
-    WIFI_PASSWORD = eeprom.getString("password");
-  if (eeprom.isKey("user_email"))
-    USER_EMAIL = eeprom.getString("user_email");
-  if (eeprom.isKey("user_password"))
-    USER_PASSWORD = eeprom.getString("user_password");
-  if (eeprom.isKey("node_id"))
-    NODE_ID = eeprom.getString("node_id");
-  if (eeprom.isKey("door_password"))
-    DOOR_PASSWORD = eeprom.getString("door_password");
-  eeprom.end();
-}
+const int MAX_NETWORKS = 20;        // Số lượng mạng tối đa để lưu lại
+String wifiNetworks[MAX_NETWORKS];  // Mảng để lưu các SSID
+int numNetworks = 0;                // Số lượng mạng tìm được
+bool isConnectedWifi;               // Trạng thái WIFI
 
-// -----Hàm xử lý setup từ client-----//
-void handleSetup() {
-  if (server.hasArg("ssid") && server.hasArg("password") && server.hasArg("user") && server.hasArg("userpass") && server.hasArg("node") && server.hasArg("doorpass")) {
-    WIFI_SSID = server.arg("ssid");
-    WIFI_PASSWORD = server.arg("password");
-    USER_EMAIL = server.arg("user");
-    USER_PASSWORD = server.arg("userpass");
-    NODE_ID = server.arg("node");
-    DOOR_PASSWORD = server.arg("doorpass");
-    saveConfig();
-    bool success = config();
-    server.send(200, "application/json", success ? "true" : "false");
-    Serial.println(success ? "Cấu hình thành công, đã kết nối WiFi và server" : "Cấu hình thất bại, không thể kết nối WiFi hoặc server");
-    delay(1000);
-    if (success) {
-      ESP.restart();
-    }
+// Hàm quét các mạng WiFi
+void scanWifi() {
+  WiFi.mode(WIFI_STA);
+  //WiFi.disconnect();
+  numNetworks = 0;
+  lcd.setCursor(0, 0);
+  lcd.print("Scaning WiFi...");
+  int numScanNetworks = WiFi.scanNetworks();
+  lcd.clear();
+
+  if (numScanNetworks == -1) {
+    lcd.setCursor(0, 0);
+    lcd.print("Couldn't get a WiFi");
+    delay(2000);
+    lcd.clear();
   } else {
-    server.send(400, "text/plain", "Missing ssid, password, user, userpass, or node");
+    Serial.print("Found ");
+    Serial.print(numScanNetworks);
+    Serial.println(" networks");
+
+    // Lưu các SSID vào mảng
+    for (int i = 0; i < numScanNetworks; ++i) {
+      if (numNetworks < MAX_NETWORKS) {
+        wifiNetworks[numNetworks] = WiFi.SSID(i);
+        numNetworks++;
+      } else {
+        Serial.println("Exceeded max number of networks");
+        break;
+      }
+    }
   }
 }
 
-// -----Hàm kết nối WiFi-----//
+// Hàm kết nối WiFi
 bool connectToWiFi() {
+  Serial.println();
+  Serial.print("Connecting to ");
+  Serial.println(WIFI_SSID);
+  lcd.clear();
+  lcd.setCursor(0, 0);
+  lcd.print("Connecting Wifi");
+  lcd.setCursor(0, 1);
+  lcd.print(WIFI_SSID);
   WiFi.disconnect();
   WiFi.begin(WIFI_SSID.c_str(), WIFI_PASSWORD.c_str());
-  Serial.print("Đang kết nối WiFi...");
+  String dot = "";
   int timer = 0;
-  while (WiFi.status() != WL_CONNECTED && timer < 60) {
+  bool iscnt = true;
+  while (WiFi.status() != WL_CONNECTED) {
     delay(500);
-    Serial.print(".");
     timer++;
+    dot += ".";
+    if (dot.length() == 4) {
+      dot = "";
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Connecting Wifi");
+    }
+    lcd.setCursor(0, 1);
+    lcd.print(WIFI_SSID + dot);
+    Serial.print(".");
+    if (timer == 30) {
+      iscnt = false;
+      //WiFi.disconnect(true);
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Unable to/nconnect WiFi");
+      delay(2000);
+      lcd.clear();
+      break;
+    }
   }
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\nWiFi đã kết nối!");
-    Serial.print("IP LAN: ");
+  if (iscnt) {
+    Serial.println("");
+    Serial.println("WiFi connected");
+    Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
+
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("WiFi connected");
+    lcd.setCursor(0, 1);
+    lcd.print("IP: ");
+    lcd.print(WiFi.localIP());
+    delay(2000);
+    lcd.clear();
+    return true;
+  }
+  return false;  // Trả về false nếu không kết nối được WiFi
+}
+
+// ------------------------ Đọc/Ghi EEPROM ----------------------------- //
+bool hasCharacters(String str) {
+  return str.length() > 0;
+}
+
+// Hàm kiểm tra thông tin PassDoor
+bool checkPassDoorInfo() {
+  eeprom.begin("my-app", true);
+  bool check = eeprom.isKey("pass") && eeprom.getString("pass").length() > 0;
+  if (check) {
+    PASS = eeprom.getString("pass");  // Gán giá trị từ EEPROM cho biến PASS
+  }
+  eeprom.end();
+  return check;
+}
+
+// Hàm thiết lập thông tin PassDoor
+bool setPassDoorInfo(String pass) {
+  if (hasCharacters(pass)) {
+    eeprom.begin("my-app", false);
+    eeprom.putString("pass", pass);
+    eeprom.end();
+    PASS = pass;  // Cập nhật giá trị mới cho biến PASS
     return true;
   } else {
-    Serial.println("\nKết nối WiFi thất bại!");
     return false;
   }
 }
 
-// -----Hàm kết nối socket.io tới server-----//
-void connectSocketIo() {
-  String serverHost = "192.168.1.40";  // Đổi IP server cho phù hợp
-  int serverPort = 8080;
-  String nodeId = NODE_ID;
-  socket.begin(serverHost.c_str(), serverPort);
-  socket.on("connect", [](const char *payload, size_t length) {
-    Serial.println("SocketIO đã kết nối!");
-    // Tham gia phòng riêng cho node
-    String nodeIdJson = "\"" + NODE_ID + "\"";
-    socket.emit("joinRoom", nodeIdJson.c_str());
-  });
-  socket.on("serverMessage", [](const char *payload, size_t length) {
-    Serial.print("Nhận serverMessage: ");
-    Serial.println(payload);
-    // Giả sử server gửi: {"action":"toggle","led":1,"value":1}
-    // String msg = String(payload);
-    // if (msg.indexOf("toggle") != -1) {
-    //   // Lấy giá trị pin từ chuỗi JSON
-    //   int pinValue = -1;
-    //   int ledIdx = msg.indexOf("\"led\":");
-    //   if (ledIdx != -1) {
-    //     int start = ledIdx + 6;
-    //     int end = msg.indexOf(',', start);
-    //     if (end == -1) end = msg.indexOf('}', start);
-    //     String pinStr = msg.substring(start, end);
-    //     pinStr.trim();
-    //     pinValue = pinStr.toInt();
-    //   }
-    //   // Tìm vị trí pin trong mảng LED_PINS
-    //   int ledNum = -1;
-    //   for (int i = 0; i < NUM_LED; i++) {
-    //     if (LED_PINS[i] == pinValue) {
-    //       ledNum = i;
-    //       Serial.println("Tìm thấy lệnh cho LED ở pin " + String(pinValue) + " (LED số " + String(i + 1) + ")");
-    //       break;
-    //     }
-    //   }
-    //   if (ledNum != -1) {
-    //     int value = (msg.indexOf("\"value\":1") != -1) ? HIGH : LOW;
-    //     digitalWrite(LED_PINS[ledNum], value);
-    //     Serial.print("Đã cập nhật LED ở pin ");
-    //     Serial.print(LED_PINS[ledNum]);
-    //     Serial.print(" (LED số ");
-    //     Serial.print(ledNum + 1);
-    //     Serial.print("): ");
-    //     Serial.println(value);
-    //   }
-    // }
-  });
-  socket.on("notification", [](const char *payload, size_t length) {
-    Serial.print("Nhận notification: ");
-    Serial.println(payload);
-  });
-  socket.on("disconnect", [](const char *payload, size_t length) {
-    Serial.println("SocketIO ngắt kết nối!");
-  });
+// Hàm thiết lập thông tin WiFi
+bool setWiFiInfo() {
+  if (hasCharacters(WIFI_SSID) && hasCharacters(WIFI_PASSWORD)) {
+    eeprom.begin("my-app", false);
+    eeprom.putString("ssid", WIFI_SSID);
+    eeprom.putString("password", WIFI_PASSWORD);
+    eeprom.end();
+    Serial.println("ok");
+    return true;
+  } else {
+    Serial.println("not ok");
+    return false;
+  }
 }
 
-// -----Hàm đăng nhập và gửi thông tin node lên server-----//
+// Hàm kiểm tra thông tin WiFi
+bool checkWifiInfo() {
+  eeprom.begin("my-app", true);
+  bool check = eeprom.isKey("ssid") && eeprom.isKey("password") && eeprom.getString("ssid").length() > 0 && eeprom.getString("password").length() > 0;
+  if (check) {
+    WIFI_SSID = eeprom.getString("ssid");
+    WIFI_PASSWORD = eeprom.getString("password");
+  }
+  eeprom.end();
+  return check;
+}
+
+// ------------------------ Đọc/ghi danh sách thẻ ------------------ //
+
+bool checkFile() {
+  return LittleFS.exists("/cards.json");
+}
+
+bool createFile() {
+  File file = LittleFS.open("/cards.json", "w");
+  if (!file) {
+    return false;
+  } else {
+    file.close();
+    return true;
+  }
+}
+
+bool addCardToFile(String id, String name) {
+  File file = LittleFS.open("/cards.json", "a");
+  if (file) {
+    StaticJsonDocument<128> doc;
+    doc["id"] = id;
+    doc["name"] = name;
+    serializeJson(doc, file);
+    file.println();
+    file.close();
+    Serial.println("Đã thêm thẻ mới vào file!");
+    return true;
+  } else {
+    return false;
+  }
+}
+
+bool checkCardById(String id) {
+  File file = LittleFS.open("/cards.json", "r");
+  if (!file) {
+    Serial.println("Không mở được file cards.json để đọc!");
+    return false;
+  } else {
+    while (file.available()) {
+      String line = file.readStringUntil('\n');
+      StaticJsonDocument<128> doc;
+      DeserializationError err = deserializeJson(doc, line);
+      if (!err) {
+        if (doc["id"].as<String>() == id) {
+          CARD_NAME = doc["name"].as<String>();
+          if (CARD_NAME == "guest") {
+            IS_GUEST = true;
+          } else {
+            IS_GUEST = false;
+          }
+          file.close();
+          return true;
+        }
+      }
+    }
+    file.close();
+    return false;
+  }
+}
+
+bool removeCardById(String id) {
+  File file = LittleFS.open("/cards.json", "r");
+  if (!file) return false;
+  String newContent = "";
+  while (file.available()) {
+    String line = file.readStringUntil('\n');
+    StaticJsonDocument<128> doc;
+    DeserializationError err = deserializeJson(doc, line);
+    if (!err) {
+      if (doc["id"].as<String>() != id) {
+        newContent += line + "\n";
+      }
+    }
+  }
+  file.close();
+  file = LittleFS.open("/cards.json", "w");
+  if (!file) return false;
+  file.print(newContent);
+  file.close();
+  return true;
+}
+
+void readAllId() {
+  File file = LittleFS.open("/cards.json", "r");
+  if (file) {
+    Serial.println("Danh sách thẻ:");
+    while (file.available()) {
+      String line = file.readStringUntil('\n');
+      StaticJsonDocument<128> docRead2;
+      DeserializationError err = deserializeJson(docRead2, line);
+      if (!err) {
+        Serial.print("ID: ");
+        Serial.print(docRead2["id"].as<const char *>());
+        Serial.print(" | Name: ");
+        Serial.println(docRead2["name"].as<const char *>());
+      }
+    }
+    file.close();
+  }
+}
+
+// -----------------------Hàm đăng nhập -----------------------//
 String login() {
   HTTPClient http;
   String serverUrl = "http://192.168.1.40:8080/api/v1/auth/login";
@@ -217,96 +339,143 @@ String login() {
   return token;
 }
 
-// -----Hàm gửi thông tin node lên server-----//
-bool sendNodeInfo(String token) {
+bool createAccessLog(String status) {
   HTTPClient http;
-  String mac = WiFi.macAddress();
-  String ip = WiFi.localIP().toString();
-  String nodeName = "ESP32-" + mac.substring(mac.length() - 5);
-  String nodeId = NODE_ID;
-  String serverUrl = "http://192.168.1.40:8080/api/v1/nodes/" + nodeId;  // API update node
-  String payload = "{\"name\":\"" + nodeName + "\",\"ip\":\"" + ip + "\",\"mac\":\"" + mac + "\"}";
+  String serverUrl = "http://192.168.1.40:8080/api/v1/access-logs/";
+  String payload = "{";
+  payload += "\"cardNumber\":\"" + CARD_ID + "\",";
+  payload += "\"accessType\":\"" + ACCESS_TYPE + "\",";
+  payload += "\"status\":\"" + status + "\"";
+  if (IS_GUEST) {
+    payload += ",\"isGuest\":true";
+  }
+  payload += "}";
   http.begin(serverUrl);
   http.addHeader("Content-Type", "application/json");
-  http.addHeader("Authorization", "Bearer " + token);
-  int httpCode = http.PUT(payload);
+  http.addHeader("Authorization", "Bearer " + ACCESS_TOKEN);
+  int httpCode = http.POST(payload);
   String res = http.getString();
-  Serial.println("Node update response: " + res);
+  Serial.println("AccessLog response: " + res);
   http.end();
   return (httpCode == 200);
 }
 
-void onApAndWebServer() {
-  // Bật AP và server để nhận cấu hình
-  WiFi.softAP(AP_SSID, AP_PASS);
-  Serial.print("AP IP: ");
-  Serial.println(WiFi.softAPIP());
-  server.on("/setup", handleSetup);
-  server.begin();
-  Serial.println("Webserver started");
-}
-
-bool config() {
-  // Kết nối WiFi và đăng nhập, gửi thông tin node
-  bool ok = connectToWiFi();
-  if (ok) {
-    String token = login();
-    if (token != "") {
-      bool success = sendNodeInfo(token);
-      if (success) {
-        return true;
-      } else {
-        return false;
-      }
-    } else {
-      Serial.println("Đăng nhập thất bại");
-      clearConfig();
-      return false;
-    }
-  } else {
-    clearConfig();
-    return false;
-  }
-}
-
-void reConfig() {
-  // Đọc trạng thái của cả hai nút
-  int buttonState = digitalRead(BUTTON_PIN);
-  int bootState = digitalRead(BOOT_PIN);
-  currentState = (buttonState == LOW || bootState == LOW) ? LOW : HIGH;
-
-  if (lastState == HIGH && currentState == LOW) {
-    pressedTime = millis();
-  }
-
-  // Nếu đang giữ nút đủ 5 giây thì thực hiện lại cấu hình
-  if (currentState == LOW && pressedTime > 0) {
-    long holdDuration = millis() - pressedTime;
-    if (holdDuration >= LONG_PRESS_TIME) {
-      ledState = !ledState;
-      digitalWrite(BOARD_LED_PIN, ledState);
-      if (ledState == HIGH) {
-        // Gọi lại hàm config để cấu hình lại
-        onApAndWebServer();
-      } else {
-        WiFi.softAPdisconnect(true);
-      }
-      while (digitalRead(BUTTON_PIN) == LOW || digitalRead(BOOT_PIN) == LOW) {
-        delay(10);
-      }
-      pressedTime = 0;
+bool addCardUser(String employeeId) {
+  HTTPClient http;
+  String serverUrl = "http://192.168.1.40:8080/api/v1/users/employee/" + employeeId;
+  String payload = "{\"cardNumber\":\"" + CARD_ID + "\"}";
+  http.begin(serverUrl);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bearer " + ACCESS_TOKEN);
+  int httpCode = http.PUT(payload);
+  String res = http.getString();
+  Serial.println("Update user response: " + res);
+  if (httpCode == 200) {
+    StaticJsonDocument<256> doc;
+    DeserializationError err = deserializeJson(doc, res);
+    if (!err && doc["name"].is<String>()) {
+      CARD_NAME = doc["name"].as<String>();
+      Serial.println("CARD_NAME: " + CARD_NAME);
     }
   }
+  http.end();
+  return (httpCode == 200);
+}
 
-  lastState = currentState;
+bool getUser(String cardNumber) {
+  HTTPClient http;
+  String serverUrl = "http://192.168.1.40:8080/api/v1/users/card/" + cardNumber;
+  http.begin(serverUrl);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bearer " + ACCESS_TOKEN);
+  int httpCode = http.GET();
+  String res = http.getString();
+  Serial.println("Get user response: " + res);
+  if (httpCode == 200) {
+    StaticJsonDocument<256> doc;
+    DeserializationError err = deserializeJson(doc, res);
+    if (!err && doc["name"].is<String>()) {
+      CARD_NAME = doc["name"].as<String>();
+      Serial.println("CARD_NAME: " + CARD_NAME);
+    }
+  }
+  http.end();
+  return (httpCode == 200);
+}
+
+bool removeCardUser(String cardNumber) {
+  HTTPClient http;
+  String serverUrl = "http://192.168.1.40:8080/api/v1/users/card/" + cardNumber;
+  http.begin(serverUrl);
+  http.addHeader("Content-Type", "application/json");
+  http.addHeader("Authorization", "Bearer " + ACCESS_TOKEN);
+  int httpCode = http.PUT("");
+  String res = http.getString();
+  Serial.println("Remove card from user response: " + res);
+  http.end();
+  return (httpCode == 200 || httpCode == 404);
+}
+
+void connectSocketIo() {
+  String serverHost = "192.168.1.40";  // Đổi IP server cho phù hợp
+  int serverPort = 8080;
+  socket.begin(serverHost.c_str(), serverPort);
+  socket.on("connect", [](const char *payload, size_t length) {
+    Serial.println("SocketIO đã kết nối!");
+    String roomIdJson = "\"" + ROOM_ID + "\"";
+    socket.emit("joinRoom", roomIdJson.c_str());
+  });
+  socket.on("serverMessage", [](const char *payload, size_t length) {
+    Serial.print("Nhận serverMessage: ");
+    Serial.println(payload);
+  });
+  socket.on("notification", [](const char *payload, size_t length) {
+    Serial.print("Nhận notification: ");
+    Serial.println(payload);
+  });
+  socket.on("user-action", [](const char *payload, size_t length) {
+    Serial.print("Nhận user-action: ");
+    Serial.println(payload);
+    // Parse JSON để lấy cardNumber và action
+    StaticJsonDocument<128> doc;
+    DeserializationError err = deserializeJson(doc, payload);
+    if (!err) {
+      String action = doc["action"].as<String>();
+      String cardNumber = doc["cardNumber"].as<String>();
+      if (action == "delete" && cardNumber.length() > 0) {
+        if (removeCardById(cardNumber)) {
+          Serial.println("Đã xóa thẻ: " + cardNumber);
+        } else {
+          Serial.println("Lỗi xóa thẻ: " + cardNumber);
+        }
+      }
+      if (action == "restore" && cardNumber.length() > 0) {
+        if (getUser(cardNumber)) {
+          if (addCardToFile(cardNumber, CARD_NAME)) {
+            Serial.println("Đã khôi phục thẻ: " + cardNumber);
+          } else {
+            Serial.println("Lỗi khôi phục thẻ: " + cardNumber);
+          }
+        } else {
+          Serial.println("Lỗi khôi phục thẻ ở server: " + cardNumber);
+        }
+        CARD_NAME = "";
+      }
+    }
+  });
+  socket.on("disconnect", [](const char *payload, size_t length) {
+    Serial.println("SocketIO ngắt kết nối!");
+  });
 }
 
 void connect() {
   bool ok = connectToWiFi();
   if (ok) {
-    String token = login();
-    if (token != "") {
+    ACCESS_TOKEN = login();
+    if (ACCESS_TOKEN != "") {
       connectSocketIo();
+      digitalWrite(LED_ONL, HIGH);
+      digitalWrite(LED_OFF, LOW);
     }
   }
 }
@@ -314,53 +483,188 @@ void connect() {
 void setup() {
   Serial.begin(115200);
   pinMode(BUZZER, OUTPUT);
+  pinMode(LED_ONL, OUTPUT);
+  pinMode(LED_OFF, OUTPUT);
+  pinMode(BUTTON_PIN, INPUT_PULLUP);
+  sv.attach(SERVO_PIN, 500, 2400);
+  sv.write(180);
   lcd.init();
-  lcd.backlight();   //đèn nền bật
-  lcd.begin(16, 2);  // cài đặt số cột và số dòng
-  // in logo lên màn hình
-  lcd.print("nhom 5");
+  lcd.backlight();
+  lcd.begin(16, 2);
+  lcd.print("Huy");
   lcd.setCursor(0, 1);
   lcd.print("PHENIKAA");
-  delay(2500);
+  delay(2000);
   lcd.clear();
-  pinMode(BUTTON_PIN, INPUT_PULLUP);
-  pinMode(BOOT_PIN, INPUT_PULLUP);
-  pinMode(BOARD_LED_PIN, OUTPUT);
-  digitalWrite(BOARD_LED_PIN, ledState);
-  loadConfig();
-  isConfigured = WIFI_SSID.length() > 0 && WIFI_PASSWORD.length() > 0 && USER_EMAIL.length() > 0 && USER_PASSWORD.length() > 0 && NODE_ID.length() > 0 && DOOR_PASSWORD.length() > 0;
-
-  if (!isConfigured) {
-    onApAndWebServer();
+  if (!LittleFS.begin()) {
+    if (!LittleFS.begin(true)) {
+      Serial.println("LittleFS ready!");
+    } else {
+      Serial.println("Lỗi khởi tạo LittleFS!");
+    }
   } else {
-    connect();
+    Serial.println("LittleFS ready!");
   }
+  if (!checkFile()) {
+    if (createFile()) {
+      Serial.println("Đã tạo file cards.json!");
+    } else {
+      Serial.println("Lỗi tạo file cards.json!");
+    }
+  } else {
+    readAllId();
+  }
+  if (checkWifiInfo()) {
+    connect();
+  } else {
+    digitalWrite(LED_ONL, LOW);
+    digitalWrite(LED_OFF, HIGH);
+  }
+  if (!checkPassDoorInfo()) {
+    setPassDoorInfo("12345678");
+  }
+
+  SPI.begin();      // Init SPI bus
+  rfid.PCD_Init();  // Init MFRC522
+
+  Serial.println(F("This code scan the RFID NUID."));
 }
 
-String str = "";
-String new_pass = "";
-String selectedSSID = "";
-String passWifi = "";
-bool isClose = true;
-bool isOpen = false;
-bool isMode = false;
-bool isChangePassword = false;
-bool isConnect = false;
-bool isWifi = false;
-bool isScanWifi = false;
-bool isSelected = false;
-bool isPassTrue = false;
-String hidden = "";
-int x = 0;
-int i = 0;
-int k = 47;
-unsigned long t;
+void loop() {
+  socket.loop();
+  door();
+  //   readCard();
+}
+
+void readCard() {
+  if (!rfid.PICC_IsNewCardPresent())
+    return;
+  if (!rfid.PICC_ReadCardSerial())
+    return;
+  char hexStr[20] = "";
+  for (byte i = 0; i < rfid.uid.size; i++) {
+    sprintf(hexStr + strlen(hexStr), "%02X", rfid.uid.uidByte[i]);
+  }
+  CARD_ID = String(hexStr);
+  digitalWrite(BUZZER, HIGH);
+  delay(200);
+  digitalWrite(BUZZER, LOW);
+  rfid.PICC_HaltA();
+  rfid.PCD_StopCrypto1();
+}
 
 void door() {
+  static String str = "";
+  static String new_pass = "";
+  static String selectedSSID = "";
+  static String passWifi = "";
+  static bool isClose = true;
+  static bool isOpen = false;
+  static bool isMode = false;
+  static bool isChangePassword = false;
+  static bool isConnect = false;
+  static bool isCard = false;
+  static bool isAddCard = false;
+  static bool isRemoveCard = false;
+  static bool isWifi = false;
+  static bool isScanWifi = false;
+  static bool isSelected = false;
+  static bool isPassTrue = false;
+  static String hidden = "";
+  static int x = 0;
+  static int i = 0;
+  static int k = 47;
+  static unsigned long t;
+  static const char *modeList[3] = { "Connect", "Card", "Change Password" };
+  static int modeIndex = 0;
+  static const char *wifiList[2] = { "Scan Wifi", "Disconnect" };
+  static int wifiIndex = 0;
+  static const char *connectList[2] = { "Wifi", "Bluetooth" };
+  static int connectIndex = 0;
+  static const char *cardList[2] = { "Add Card", "Remove Card" };
+  static int cardIndex = 0;
+  static bool isSelectType = false;
+  static int typeIndex = 0;
+  static bool isInputEmp = false;
+  static String empCode = "";
+  static bool isCardScanned = false;
+  static bool isConfirmRemove = false;
+  static unsigned long pressedTime = 0;
+  static int lastButtonState = HIGH;
   if (isClose) {
+    int buttonState = digitalRead(BUTTON_PIN);
     lcd.setCursor(0, 0);
     lcd.print("Enter Password:");
     char temp = keypad.getKey();
+    readCard();
+    if (CARD_ID.length() > 0) {
+      if (checkCardById(CARD_ID)) {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Card Accepted");
+        lcd.setCursor(0, 1);
+        lcd.print("Welcome " + CARD_NAME);
+        for (int vitri = 180; vitri >= 90; vitri--) {
+          sv.write(vitri);
+        }
+        ACCESS_TYPE = "in";
+        createAccessLog("accepted");
+        delay(2000);
+        isClose = false;
+        isOpen = true;
+        IS_GUEST = false;
+        CARD_ID = "";
+        CARD_NAME = "";
+        ACCESS_TYPE = "";
+        t = millis();
+        lcd.clear();
+      } else {
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Card Denied");
+        lcd.setCursor(0, 1);
+        lcd.print("Unknown Card");
+        ACCESS_TYPE = "in";
+        createAccessLog("rejected");
+        delay(2000);
+        ACCESS_TYPE = "";
+        CARD_ID = "";
+        CARD_NAME = "";
+        lcd.clear();
+      }
+      CARD_ID = "";
+    }
+
+    // Kiểm tra giữ nút BUTTON_PIN để mở cửa
+    if (lastButtonState == HIGH && buttonState == LOW) {
+      pressedTime = millis();
+    }
+    if (buttonState == LOW && pressedTime > 0) {
+      long holdDuration = millis() - pressedTime;
+      if (holdDuration >= 1000) {
+        CARD_ID = "MANUAL_OPEN";
+        ACCESS_TYPE = "out";
+        createAccessLog("accepted");
+        lcd.clear();
+        lcd.setCursor(0, 0);
+        lcd.print("Open");
+        for (int vitri = 180; vitri >= 90; vitri--) {
+          sv.write(vitri);
+        }
+        CARD_ID = "";
+        ACCESS_TYPE = "";
+        isClose = false;
+        isOpen = true;
+        pressedTime = 0;
+        t = millis();
+        lcd.clear();
+        // Đợi nhả nút
+        while (digitalRead(BUTTON_PIN) == LOW) {
+          delay(10);
+        }
+      }
+    }
+    lastButtonState = buttonState;
     if ((int)keypad.getState() == PRESSED) {
       if ((char)temp != 'A' && (char)temp != 'B' && (char)temp != 'C' && (char)temp != 'D' && temp != 0) {
         str += temp;
@@ -371,14 +675,14 @@ void door() {
         delay(250);
         lcd.setCursor(0, 1);
         lcd.print(hidden);
-        if (str.length() == 8 && str == "12345678") {
+        if (str.length() == 8 && str == PASS) {
           delay(600);
           lcd.clear();
           lcd.setCursor(0, 0);
           lcd.print("Open");
-          // for (int vitri = 180; vitri >= 90; vitri--) {
-          //   sv.write(vitri);
-          // }
+          for (int vitri = 180; vitri >= 90; vitri--) {
+            sv.write(vitri);
+          }
           isClose = false;
           isOpen = true;
           str = "";
@@ -386,7 +690,7 @@ void door() {
           x = 0;
           t = millis();
           lcd.clear();
-        } else if (str.length() == 8 && str != "12345678") {
+        } else if (str.length() == 8 && str != PASS) {
           delay(500);
           lcd.clear();
           lcd.setCursor(0, 0);
@@ -439,9 +743,9 @@ void door() {
     if ((int)keypad.getState() == PRESSED) {
       if ((char)temp == 'B') {
         digitalWrite(BUZZER, LOW);
-        // for (int vitri = 90; vitri <= 180; vitri++) {
-        //   sv.write(vitri);
-        // }
+        for (int vitri = 90; vitri <= 180; vitri++) {
+          sv.write(vitri);
+        }
         isOpen = false;
         isClose = true;
         lcd.clear();
@@ -450,23 +754,35 @@ void door() {
   }
   if (isMode) {
     lcd.setCursor(0, 0);
-    lcd.print("1:Change Password");
+    lcd.print("Setting:");
     lcd.setCursor(0, 1);
-    lcd.print("2:Connect");
+    lcd.print(String(modeIndex + 1) + ":" + modeList[modeIndex]);
     char temp = keypad.getKey();
-
     if ((int)keypad.getState() == PRESSED) {
-      if ((char)temp == '1') {
-        isMode = false;
-        isChangePassword = true;
+      if ((char)temp == '6') {  // Next chức năng
+        modeIndex++;
+        if (modeIndex > 2) modeIndex = 0;
         lcd.clear();
       }
-      if ((char)temp == '2') {
-        isMode = false;
-        isConnect = true;
+      if ((char)temp == '4') {  // Previous chức năng
+        modeIndex--;
+        if (modeIndex < 0) modeIndex = 2;
         lcd.clear();
       }
-      if ((char)temp == 'B') {
+      if ((char)temp == '5') {  // Chọn chức năng
+        if (modeIndex == 0) {   // Connect
+          isMode = false;
+          isConnect = true;
+        } else if (modeIndex == 1) {  // Card
+          isMode = false;
+          isCard = true;
+        } else if (modeIndex == 2) {  // Change Password
+          isMode = false;
+          isChangePassword = true;
+        }
+        lcd.clear();
+      }
+      if ((char)temp == 'B') {  // Thoát menu
         isMode = false;
         isClose = true;
         isOpen = false;
@@ -476,22 +792,31 @@ void door() {
   }
   if (isConnect) {
     lcd.setCursor(0, 0);
-    lcd.print("1:Wifi");
+    lcd.print("Connect:");
     lcd.setCursor(0, 1);
-    lcd.print("2:Bluetooh");
+    lcd.print(String(connectIndex + 1) + ":" + connectList[connectIndex]);
     char temp = keypad.getKey();
-
     if ((int)keypad.getState() == PRESSED) {
-      if ((char)temp == '1') {
-        isWifi = true;
-        isConnect = false;
+      if ((char)temp == '6') {  // Next
+        connectIndex++;
+        if (connectIndex > 1) connectIndex = 0;
         lcd.clear();
       }
-      if ((char)temp == '2') {
+      if ((char)temp == '4') {  // Previous
+        connectIndex--;
+        if (connectIndex < 0) connectIndex = 1;
         lcd.clear();
-        lcd.setCursor(0, 0);
-        lcd.print("null");
-        delay(2000);
+      }
+      if ((char)temp == '5') {    // Chọn
+        if (connectIndex == 0) {  // Wifi
+          isWifi = true;
+          isConnect = false;
+        } else if (connectIndex == 1) {  // Bluetooth
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("null");
+          delay(2000);
+        }
         lcd.clear();
       }
       if ((char)temp == 'B') {
@@ -503,18 +828,29 @@ void door() {
   }
   if (isWifi) {
     lcd.setCursor(0, 0);
-    lcd.print("1:Scan Wifi");
+    lcd.print("Wifi:");
     lcd.setCursor(0, 1);
-    lcd.print("2:Disconnect");
+    lcd.print(String(wifiIndex + 1) + ":" + wifiList[wifiIndex]);
     char temp = keypad.getKey();
-
     if ((int)keypad.getState() == PRESSED) {
-      if ((char)temp == '1') {
-        isScanWifi = true;
-        isWifi = false;
+      if ((char)temp == '6') {  // Next
+        wifiIndex++;
+        if (wifiIndex > 1) wifiIndex = 0;
         lcd.clear();
       }
-      if ((char)temp == '2') {
+      if ((char)temp == '4') {  // Previous
+        wifiIndex--;
+        if (wifiIndex < 0) wifiIndex = 1;
+        lcd.clear();
+      }
+      if ((char)temp == '5') {  // Chọn
+        if (wifiIndex == 0) {   // Scan Wifi
+          isScanWifi = true;
+          isWifi = false;
+        } else if (wifiIndex == 1) {  // Disconnect
+          // Xử lý disconnect nếu cần
+        }
+        lcd.clear();
       }
       if ((char)temp == 'B') {
         isConnect = true;
@@ -524,237 +860,472 @@ void door() {
     }
   }
   if (isScanWifi) {
-    // if (WiFi.status() != WL_CONNECTED && numNetworks == 0) {
-    //   WiFi.disconnect(true);
-    // }
-    // if (numNetworks == 0) {
-    //   scanWifi();
-    // }
-    // char temp = keypad.getKey();
-    // if (!isSelected) {
-    //   lcd.setCursor(0, 0);
-    //   lcd.print("Select Wifi:");
-    //   lcd.setCursor(0, 1);
-    //   lcd.print(wifiNetworks[i]);
-    //   if ((int)keypad.getState() == PRESSED) {
-    //     if ((char)temp == '6') {
-    //       lcd.clear();
-    //       i++;
-    //       if (i == numNetworks) {
-    //         i = 0;
-    //         lcd.setCursor(0, 1);
-    //         lcd.print(wifiNetworks[i]);
-    //       } else {
-    //         lcd.setCursor(0, 1);
-    //         lcd.print(wifiNetworks[i]);
-    //       }
-    //     }
-    //     if ((char)temp == '4') {
-    //       lcd.clear();
-    //       i--;
-    //       if (i < 0) {
-    //         i = numNetworks - 1;
-    //         lcd.setCursor(0, 1);
-    //         lcd.print(wifiNetworks[i]);
-    //       } else {
-    //         lcd.setCursor(0, 1);
-    //         lcd.print(wifiNetworks[i]);
-    //       }
-    //     }
-    //     if ((char)temp == '5') {
-    //       WIFI_SSID = wifiNetworks[i];
-    //       Serial.println(WIFI_SSID);
-    //       isSelected = true;
-    //       lcd.clear();
-    //     }
-    //     if ((char)temp == 'B') {
-    //       isScanWifi = false;
-    //       isWifi = true;
-    //       numNetworks = 0;
-    //       lcd.clear();
-    //     }
-    //   }
-    // }
-    // if (isSelected) {
-    //   lcd.setCursor(0, 0);
-    //   lcd.print("Enter password:");
-    //   if ((int)keypad.getState() == PRESSED) {
-    //     if ((char)temp == '2') {
-    //       k++;
-    //       if (k > 122) {
-    //         k = 48;
-    //       }
-    //       lcd.setCursor(passWifi.length(), 1);
-    //       lcd.print(char(k));
-    //     }
-    //     if ((char)temp == '8') {
-    //       k--;
-    //       if (k < 48) {
-    //         k = 122;
-    //       }
-    //       lcd.setCursor(passWifi.length(), 1);
-    //       lcd.print(char(k));
-    //     }
-    //     if ((char)temp == '5') {
-    //       if (k >= 48 && k <= 122) {
-    //         passWifi += char(k);
-    //         k = 47;
-    //       }
-    //       lcd.setCursor(0, 1);
-    //       lcd.print(passWifi + "_");
-    //     }
-    //     if ((char)temp == 'C') {
-    //       if (passWifi.length() > 0) {
-    //         passWifi.remove(passWifi.length() - 1);
-    //         lcd.clear();
-    //       }
-    //       lcd.setCursor(0, 1);
-    //       lcd.print(passWifi + "_");
-    //     }
-    //     if ((char)temp == 'B') {
-    //       isSelected = false;
-    //       numNetworks = 0;
-    //       lcd.clear();
-    //     }
-    //     if ((char)temp == 'A') {
-    //       WIFI_PASSWORD = passWifi;
-    //       passWifi = "";
-    //       Serial.println(WIFI_PASSWORD);
-    //       bool a = connectToWiFi();
-    //       if (a) {
-    //         setWiFiInfo();
-    //       }
-    //       if (a && !Firebase.ready()) {
-    //         connectFirebase();
-    //       }
-    //       delay(2000);
-    //       isSelected = false;
-    //       numNetworks = 0;
-    //       isWifi = true;
-    //       isScanWifi = false;
-    //       lcd.clear();
-    //     }
-    //   }
-    // }
+    if (WiFi.status() != WL_CONNECTED && numNetworks == 0) {
+      WiFi.disconnect(true);
+    }
+    if (numNetworks == 0) {
+      scanWifi();
+    }
+    char temp = keypad.getKey();
+    if (!isSelected) {
+      lcd.setCursor(0, 0);
+      lcd.print("Select Wifi:");
+      lcd.setCursor(0, 1);
+      lcd.print(wifiNetworks[i]);
+      if ((int)keypad.getState() == PRESSED) {
+        if ((char)temp == '6') {
+          lcd.clear();
+          i++;
+          if (i == numNetworks) {
+            i = 0;
+            lcd.setCursor(0, 1);
+            lcd.print(wifiNetworks[i]);
+          } else {
+            lcd.setCursor(0, 1);
+            lcd.print(wifiNetworks[i]);
+          }
+        }
+        if ((char)temp == '4') {
+          lcd.clear();
+          i--;
+          if (i < 0) {
+            i = numNetworks - 1;
+            lcd.setCursor(0, 1);
+            lcd.print(wifiNetworks[i]);
+          } else {
+            lcd.setCursor(0, 1);
+            lcd.print(wifiNetworks[i]);
+          }
+        }
+        if ((char)temp == '5') {
+          WIFI_SSID = wifiNetworks[i];
+          Serial.println(WIFI_SSID);
+          isSelected = true;
+          lcd.clear();
+        }
+        if ((char)temp == 'B') {
+          isScanWifi = false;
+          isWifi = true;
+          numNetworks = 0;
+          lcd.clear();
+        }
+      }
+    }
+    if (isSelected) {
+      lcd.setCursor(0, 0);
+      lcd.print("Enter password:");
+      if ((int)keypad.getState() == PRESSED) {
+        if ((char)temp == '2') {
+          k++;
+          if (k > 122) {
+            k = 48;
+          }
+          lcd.setCursor(passWifi.length(), 1);
+          lcd.print(char(k));
+        }
+        if ((char)temp == '8') {
+          k--;
+          if (k < 48) {
+            k = 122;
+          }
+          lcd.setCursor(passWifi.length(), 1);
+          lcd.print(char(k));
+        }
+        if ((char)temp == '5') {
+          if (k >= 48 && k <= 122) {
+            passWifi += char(k);
+            k = 47;
+          }
+          lcd.setCursor(0, 1);
+          lcd.print(passWifi + "_");
+        }
+        if ((char)temp == 'C') {
+          if (passWifi.length() > 0) {
+            passWifi.remove(passWifi.length() - 1);
+            lcd.clear();
+          }
+          lcd.setCursor(0, 1);
+          lcd.print(passWifi + "_");
+        }
+        if ((char)temp == 'B') {
+          isSelected = false;
+          numNetworks = 0;
+          lcd.clear();
+        }
+        if ((char)temp == 'A') {
+          WIFI_PASSWORD = passWifi;
+          passWifi = "";
+          Serial.println(WIFI_PASSWORD);
+          bool a = connectToWiFi();
+          if (a) {
+            setWiFiInfo();
+          }
+
+          delay(2000);
+          isSelected = false;
+          numNetworks = 0;
+          isWifi = true;
+          isScanWifi = false;
+          lcd.clear();
+        }
+      }
+    }
+  }
+  if (isCard) {
+    lcd.setCursor(0, 0);
+    lcd.print("Card:");
+    lcd.setCursor(0, 1);
+    lcd.print(String(cardIndex + 1) + ":" + cardList[cardIndex]);
+    char temp = keypad.getKey();
+    if ((int)keypad.getState() == PRESSED) {
+      if ((char)temp == '6') {  // Next
+        cardIndex++;
+        if (cardIndex > 1) cardIndex = 0;
+        lcd.clear();
+      }
+      if ((char)temp == '4') {  // Previous
+        cardIndex--;
+        if (cardIndex < 0) cardIndex = 1;
+        lcd.clear();
+      }
+      if ((char)temp == '5') {  // Chọn
+        if (cardIndex == 0) {   // Add Card
+          isAddCard = true;
+          isCard = false;
+        } else if (cardIndex == 1) {  // Remove Card
+          isRemoveCard = true;
+          isCard = false;
+        }
+        lcd.clear();
+      }
+      if ((char)temp == 'B') {
+        isMode = true;
+        isCard = false;
+        lcd.clear();
+      }
+    }
+  }
+  if (isAddCard) {
+    if (!isCardScanned) {
+      lcd.setCursor(0, 0);
+      lcd.print("Tap to add!");
+      char temp = keypad.getKey();
+      if ((int)keypad.getState() == PRESSED) {
+        if ((char)temp == 'B') {
+          isCard = true;
+          isAddCard = false;
+          empCode = "";
+          CARD_ID = "";
+          lcd.clear();
+        }
+      }
+      readCard();
+      if (CARD_ID.length() > 0) {
+        if (checkCardById(CARD_ID)) {
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Card exists!");
+          delay(1500);
+          lcd.clear();
+          CARD_ID = "";
+        } else {
+          isCardScanned = true;
+          lcd.clear();
+        }
+      }
+    } else if (!isSelectType) {
+      lcd.setCursor(0, 0);
+      lcd.print("Select card type:");
+      lcd.setCursor(0, 1);
+      lcd.print(typeIndex == 0 ? "1:Employee" : "2:Guest");
+      char temp = keypad.getKey();
+      if ((int)keypad.getState() == PRESSED) {
+        if ((char)temp == '6' || (char)temp == '4') {
+          typeIndex = 1 - typeIndex;
+          lcd.clear();
+        }
+        if ((char)temp == '5') {
+          isSelectType = true;
+          lcd.clear();
+        }
+        if ((char)temp == 'B') {
+          isCard = true;
+          isAddCard = false;
+          isCardScanned = false;
+          isSelectType = false;
+          isInputEmp = false;
+          empCode = "";
+          CARD_ID = "";
+          lcd.clear();
+        }
+      }
+    } else if (typeIndex == 0 && !isInputEmp) {
+      lcd.setCursor(0, 0);
+      lcd.print("Employee ID:");
+      lcd.setCursor(0, 1);
+      lcd.print(empCode + "_");
+      char temp = keypad.getKey();
+      if ((int)keypad.getState() == PRESSED) {
+        if (temp >= '0' && temp <= '9' && empCode.length() < 4) {
+          empCode += temp;
+          lcd.clear();
+        }
+        if (temp == 'C' && empCode.length() > 0) {
+          empCode.remove(empCode.length() - 1);
+          lcd.clear();
+        }
+        if (temp == 'A' && empCode.length() == 4) {
+          if (addCardUser(empCode)) {
+            addCardToFile(CARD_ID, CARD_NAME);
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Save success!");
+            delay(1500);
+          } else {
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Save failed!");
+            delay(1500);
+          }
+          isCard = true;
+          isAddCard = false;
+          isCardScanned = false;
+          isSelectType = false;
+          isInputEmp = false;
+          empCode = "";
+          CARD_ID = "";
+          CARD_NAME = "";
+          lcd.clear();
+        }
+        if (temp == 'B') {
+          isCard = true;
+          isAddCard = false;
+          isCardScanned = false;
+          isSelectType = false;
+          isInputEmp = false;
+          empCode = "";
+          CARD_ID = "";
+          lcd.clear();
+        }
+      }
+    } else if (typeIndex == 1 && isSelectType) {
+      // Thẻ khách
+      addCardToFile(CARD_ID, "guest");
+      lcd.clear();
+      lcd.setCursor(0, 0);
+      lcd.print("Save success!");
+      delay(1500);
+      isCard = true;
+      isAddCard = false;
+      isCardScanned = false;
+      isSelectType = false;
+      isInputEmp = false;
+      empCode = "";
+      CARD_ID = "";
+      lcd.clear();
+    }
+  }
+  if (isRemoveCard) {
+    if (!isCardScanned) {
+      lcd.setCursor(0, 0);
+      lcd.print("Tap to remove!");
+      char temp = keypad.getKey();
+      if ((int)keypad.getState() == PRESSED) {
+        if ((char)temp == 'B') {
+          isCard = true;
+          isRemoveCard = false;
+          lcd.clear();
+        }
+      }
+      readCard();
+      if (CARD_ID.length() > 0) {
+        if (!checkCardById(CARD_ID)) {
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Card not exists!");
+          delay(1500);
+          lcd.clear();
+          CARD_ID = "";
+        } else {
+          isCardScanned = true;
+          lcd.clear();
+        }
+      }
+    } else if (!isConfirmRemove) {
+      lcd.setCursor(0, 0);
+      lcd.print("Remove card?");
+      lcd.setCursor(0, 1);
+      lcd.print("5:Yes  B:No");
+      char temp = keypad.getKey();
+      if ((int)keypad.getState() == PRESSED) {
+        if ((char)temp == '5') {
+          if (removeCardUser(CARD_ID)) {
+            removeCardById(CARD_ID);
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Remove success!");
+            delay(1500);
+          } else {
+            lcd.clear();
+            lcd.setCursor(0, 0);
+            lcd.print("Remove failed!");
+            delay(1500);
+          }
+          isCard = true;
+          isRemoveCard = false;
+          isCardScanned = false;
+          isConfirmRemove = false;
+          CARD_ID = "";
+          lcd.clear();
+        }
+        if ((char)temp == 'B') {
+          isCard = true;
+          isRemoveCard = false;
+          isCardScanned = false;
+          isConfirmRemove = false;
+          CARD_ID = "";
+          lcd.clear();
+        }
+      }
+    }
   }
   if (isChangePassword) {
-    // char temp = keypad.getKey();
-    // if (!isPassTrue) {
-    //   lcd.setCursor(0, 0);
-    //   lcd.print("Old Password:");
-    //   if ((int)keypad.getState() == PRESSED) {
-    //     if ((char)temp != 'A' && (char)temp != 'B' && (char)temp != 'C' && (char)temp != 'B' && temp != 0) {
-    //       new_pass += temp;
-    //       Serial.println(new_pass);
-    //       hidden += "*";
-    //       lcd.setCursor(x++, 1);
-    //       lcd.print(temp);
-    //       delay(250);
-    //       lcd.setCursor(0, 1);
-    //       lcd.print(hidden);
-    //     }
-    //     if (temp == 'B' && temp != 0) {
-    //       isChangePassword = false;
-    //       isMode = true;
-    //       new_pass = "";
-    //       hidden = "";
-    //       x = 0;
-    //       lcd.clear();
-    //     }
-    //     if (temp == 'C' && temp != 0) {
-    //       if (new_pass.length() > 0) {
-    //         str.remove(new_pass.length() - 1);
-    //         hidden.remove(hidden.length() - 1);
-    //         x--;
-    //         lcd.clear();
-    //       }
-    //       lcd.setCursor(0, 1);
-    //       lcd.print(hidden);
-    //     }
-    //     if (temp == 'A' && temp != 0 && new_pass == PASS) {
-    //       new_pass = "";
-    //       isPassTrue = true;
-    //       hidden = "";
-    //       x = 0;
-    //       lcd.clear();
-    //     } else if (temp == 'A' && temp != 0 && new_pass != PASS) {
-    //       new_pass = "";
-    //       hidden = "";
-    //       x = 0;
-    //       lcd.clear();
-    //       lcd.setCursor(0, 0);
-    //       lcd.print("incorect");
-    //       lcd.setCursor(0, 1);
-    //       lcd.print("password");
-    //       delay(2000);
-    //       lcd.clear();
-    //     }
-    //   }
-    // }
-    // if (isPassTrue) {
-    //   lcd.setCursor(0, 0);
-    //   lcd.print("New Password:");
-    //   if ((int)keypad.getState() == PRESSED) {
-    //     if ((char)temp != 'A' && (char)temp != 'B' && (char)temp != 'C' && (char)temp != 'B' && temp != 0) {
-    //       new_pass += temp;
-    //       Serial.println(new_pass);
-    //       hidden += "*";
-    //       lcd.setCursor(x++, 1);
-    //       lcd.print(temp);
-    //       delay(250);
-    //       lcd.setCursor(0, 1);
-    //       lcd.print(hidden);
-    //     }
-    //     if (temp == 'B' && temp != 0) {
-    //       isChangePassword = false;
-    //       isMode = true;
-    //       new_pass = "";
-    //       hidden = "";
-    //       x = 0;
-    //       lcd.clear();
-    //     }
-    //     if (temp == 'C' && temp != 0) {
-    //       if (new_pass.length() > 0) {
-    //         str.remove(new_pass.length() - 1);
-    //         hidden.remove(hidden.length() - 1);
-    //         x--;
-    //         lcd.clear();
-    //       }
-    //       lcd.setCursor(0, 1);
-    //       lcd.print(hidden);
-    //     }
-    //     if (temp == 'A' && temp != 0 && new_pass.length() == 8) {
-    //       PASS = new_pass;
-    //       setPassInfo(new_pass);
-    //       if (Firebase.setString(fbdo, userPath + "/esp32-door/password", PASS)) {
-    //         Serial.println("change ok");
-    //       } else {
-    //         Serial.println("fail");
-    //       }
-    //       isPassTrue = false;
-    //       isChangePassword = false;
-    //       isMode = true;
-    //       hidden = "";
-    //       x = 0;
-    //       delay(500);
-    //       lcd.clear();
-    //       lcd.setCursor(0, 0);
-    //       lcd.print("Password is");
-    //       lcd.setCursor(0, 1);
-    //       lcd.print("change complete");
-    //       new_pass = "";
-    //       delay(2000);
-    //       lcd.clear();
-    //     }
-    //   }
-    // }
+    char temp = keypad.getKey();
+    if (!isPassTrue) {
+      lcd.setCursor(0, 0);
+      lcd.print("Old Password:");
+      if ((int)keypad.getState() == PRESSED) {
+        if ((char)temp != 'A' && (char)temp != 'B' && (char)temp != 'C' && (char)temp != 'B' && temp != 0) {
+          new_pass += temp;
+          Serial.println(new_pass);
+          hidden += "*";
+          lcd.setCursor(x++, 1);
+          lcd.print(temp);
+          delay(250);
+          lcd.setCursor(0, 1);
+          lcd.print(hidden);
+        }
+        if (temp == 'B' && temp != 0) {
+          isChangePassword = false;
+          isMode = true;
+          new_pass = "";
+          hidden = "";
+          x = 0;
+          lcd.clear();
+        }
+        if (temp == 'C' && temp != 0) {
+          if (new_pass.length() > 0) {
+            str.remove(new_pass.length() - 1);
+            hidden.remove(hidden.length() - 1);
+            x--;
+            lcd.clear();
+          }
+          lcd.setCursor(0, 1);
+          lcd.print(hidden);
+        }
+        if (temp == 'A' && temp != 0 && new_pass == PASS) {
+          new_pass = "";
+          isPassTrue = true;
+          hidden = "";
+          x = 0;
+          lcd.clear();
+        } else if (temp == 'A' && temp != 0 && new_pass != PASS) {
+          new_pass = "";
+          hidden = "";
+          x = 0;
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("incorect");
+          lcd.setCursor(0, 1);
+          lcd.print("password");
+          delay(2000);
+          lcd.clear();
+        }
+      }
+    }
+    if (isPassTrue) {
+      lcd.setCursor(0, 0);
+      lcd.print("New Password:");
+      if ((int)keypad.getState() == PRESSED) {
+        if ((char)temp != 'A' && (char)temp != 'B' && (char)temp != 'C' && (char)temp != 'B' && temp != 0) {
+          new_pass += temp;
+          Serial.println(new_pass);
+          hidden += "*";
+          lcd.setCursor(x++, 1);
+          lcd.print(temp);
+          delay(250);
+          lcd.setCursor(0, 1);
+          lcd.print(hidden);
+        }
+        if (temp == 'B' && temp != 0) {
+          isChangePassword = false;
+          isMode = true;
+          new_pass = "";
+          hidden = "";
+          x = 0;
+          lcd.clear();
+        }
+        if (temp == 'C' && temp != 0) {
+          if (new_pass.length() > 0) {
+            str.remove(new_pass.length() - 1);
+            hidden.remove(hidden.length() - 1);
+            x--;
+            lcd.clear();
+          }
+          lcd.setCursor(0, 1);
+          lcd.print(hidden);
+        }
+        if (temp == 'A' && temp != 0 && new_pass.length() == 8) {
+          PASS = new_pass;
+          setPassDoorInfo(new_pass);
+          isPassTrue = false;
+          isChangePassword = false;
+          isMode = true;
+          hidden = "";
+          x = 0;
+          delay(500);
+          lcd.clear();
+          lcd.setCursor(0, 0);
+          lcd.print("Password is");
+          lcd.setCursor(0, 1);
+          lcd.print("change complete");
+          new_pass = "";
+          delay(2000);
+          lcd.clear();
+        }
+      }
+    }
   }
 }
 
+// ------------------Sơ đồ mạch:-------------------- //
 
-void loop() {
-  server.handleClient();
-  socket.loop();
-  door();
-  reConfig();
-}
+// MFRC522      ESP32
+// SDA   ----   D5
+// SCK   ----   D18
+// MOSI  ----   D23
+// MISO  ----   D19
+// RST   ----   D0
+
+// LCD I2C      ESP32
+// SDA   ----   D21
+// SCL   ----   D22
+
+// Keypad       ESP32
+// Row_pin ---- D13, D12, D14, D27
+// Col_pin ---- D26, D25, D33, D32
+
+// Servo        ESP32
+// Signal ----  D15
+
+// Buzzer       ESP32
+// Signal ----  D4
+
+// LED_ONL      ESP32
+// Signal ----  D2
+
+// LED_OFF      ESP32
+// Signal ----  D16
+
+// BUTTON_PIN   ESP32
+// Signal ----  D17
