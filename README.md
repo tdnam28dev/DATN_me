@@ -19,9 +19,6 @@ Chạy lệnh sau để khởi động ứng dụng:
 npm start
 ```
 
-```
-
----
 
 ## Node.js Project Instructions (English)
 
@@ -41,5 +38,4 @@ Start the app with:
 ```
 npm start
 ```
-
 
