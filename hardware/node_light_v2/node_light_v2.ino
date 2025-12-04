@@ -75,7 +75,7 @@ TaskHandle_t ledButtonTaskHandle = NULL;
 TaskHandle_t reconfigTaskHandle = NULL;
 
 // -----------------------------
-// Khai báo các hàm (giữ nguyên tên)
+// Khai báo các hàm 
 // -----------------------------
 
 void saveConfig();

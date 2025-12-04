@@ -194,7 +194,7 @@ export default function DeviceSettingScreen({ route, navigation }) {
                             <Text style={styles.label}>Chân kết nối</Text>
                             <View style={styles.rowRight}>
                                 <Text style={[styles.value]}>
-                                    {deviceDetail.pin !== undefined && deviceDetail.pin !== null ? 'Pin ' + deviceDetail.pin : 'Chưa xác định'}
+                                    {'Pin ' + deviceDetail.pin}
                                 </Text>
                                 <Icon name="chevron-forward" size={18} color="#bbb" />
                             </View>

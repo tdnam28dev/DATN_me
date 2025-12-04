@@ -19,7 +19,7 @@ export default function TabNavigator() {
         tabBarIcon: ({ color, size }) => {
           let iconName;
           if (route.name === 'Home') iconName = 'home-outline';
-          else if (route.name === 'Device') iconName = 'hardware-chip-outline';
+          else if (route.name === 'Schedule') iconName = 'calendar-outline';
           else if (route.name === 'Notify') iconName = 'notifications-outline';
           else if (route.name === 'Settings') iconName = 'settings-outline';
           return <Ionicons name={iconName} size={size} color={color} backgroundColor='rgba(255, 255, 255, 0)' />;
@@ -58,7 +58,7 @@ export default function TabNavigator() {
       })}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
-      <Tab.Screen name="Device" component={DeviceStack}>
+      <Tab.Screen name="Schedule" component={DeviceStack}>
         {/* {props => <DeviceScreen {...props} token={token} />} */}
       </Tab.Screen>
       <Tab.Screen name="Notify">

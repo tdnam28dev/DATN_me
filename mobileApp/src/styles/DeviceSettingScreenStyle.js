@@ -40,6 +40,7 @@ export default StyleSheet.create({
         fontSize: 14,
         color: '#888',
         fontWeight: '400',
+        // backgroundColor: '#eec2c2ff',
     },
     subLabel: {
         fontSize: 12,

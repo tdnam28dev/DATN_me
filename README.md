@@ -19,12 +19,6 @@ Chạy lệnh sau để khởi động ứng dụng:
 npm start
 ```
 
-### 4. Phát triển thêm
-- Sửa file `index.js` để phát triển tính năng mới.
-- Thêm các package cần thiết bằng lệnh:
-
-```
-npm install <tên-package>
 ```
 
 ---
@@ -48,10 +42,4 @@ Start the app with:
 npm start
 ```
 
-### 4. Further development
-- Edit `index.js` to add new features.
-- Add packages as needed:
 
-```
-npm install <package-name>
-```
